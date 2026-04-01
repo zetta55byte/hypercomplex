@@ -1,0 +1,171 @@
+"""
+hypercomplex.derivatives
+------------------------
+Exact derivative extraction via hypercomplex perturbation.
+"""
+
+import numpy as np
+from ..core.utils import make_inputs, extract_gradient_hessian
+
+
+def grad(f, x, alpha=1e-20, beta=1e-20):
+    """
+    Compute the exact gradient of a scalar function.
+
+    Parameters
+    ----------
+    f : callable
+        Scalar function f(X) -> Hyper, written using Hyper arithmetic.
+    x : array-like
+        Point at which to evaluate the gradient.
+    alpha : float, optional
+        Imaginary step size. Default 1e-20.
+    beta : float, optional
+        Nilpotent step size. Default 1e-20.
+
+    Returns
+    -------
+    ndarray of shape (n,)
+        Exact gradient vector.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from hypercomplex import grad
+    >>> def f(X): return X[0]*X[0] + X[1]*X[1]
+    >>> grad(f, [1.0, 2.0])
+    array([2., 4.])
+    """
+    x = np.asarray(x, dtype=float)
+    X = make_inputs(x, alpha=alpha, beta=beta)
+    F = f(X)
+    g, _ = extract_gradient_hessian(F, X, alpha=alpha, beta=beta)
+    return g
+
+
+def hessian(f, x, alpha=1e-20, beta=1e-20):
+    """
+    Compute the exact Hessian matrix in one evaluation.
+
+    Parameters
+    ----------
+    f : callable
+        Scalar function f(X) -> Hyper, written using Hyper arithmetic.
+    x : array-like
+        Point at which to evaluate the Hessian.
+    alpha : float, optional
+        Imaginary step size. Default 1e-20.
+    beta : float, optional
+        Nilpotent step size. Default 1e-20.
+
+    Returns
+    -------
+    ndarray of shape (n, n)
+        Exact Hessian matrix.
+
+    Notes
+    -----
+    Requires exactly one evaluation of f. The function f must be written
+    using Hyper arithmetic (addition, subtraction, multiplication, division,
+    integer powers). NumPy ufuncs (np.sin, np.exp, etc.) do not work directly
+    on Hyper objects.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from hypercomplex import hessian
+    >>> def f(X): return X[0]*X[0] + X[0]*X[1]*3 + X[1]*X[1]*2
+    >>> hessian(f, [1.0, 2.0])
+    array([[2., 3.],
+           [3., 4.]])
+    """
+    x = np.asarray(x, dtype=float)
+    X = make_inputs(x, alpha=alpha, beta=beta)
+    F = f(X)
+    _, H = extract_gradient_hessian(F, X, alpha=alpha, beta=beta)
+    return H
+
+
+def grad_and_hessian(f, x, alpha=1e-20, beta=1e-20):
+    """
+    Compute exact gradient and Hessian simultaneously in one evaluation.
+
+    Parameters
+    ----------
+    f : callable
+        Scalar function f(X) -> Hyper.
+    x : array-like
+        Point at which to evaluate.
+    alpha : float, optional
+        Imaginary step size.
+    beta : float, optional
+        Nilpotent step size.
+
+    Returns
+    -------
+    grad : ndarray of shape (n,)
+    H : ndarray of shape (n, n)
+    """
+    x = np.asarray(x, dtype=float)
+    X = make_inputs(x, alpha=alpha, beta=beta)
+    F = f(X)
+    return extract_gradient_hessian(F, X, alpha=alpha, beta=beta)
+
+
+def jacobian(f, x, alpha=1e-20, beta=1e-20):
+    """
+    Compute the Jacobian of a vector-valued function.
+
+    Parameters
+    ----------
+    f : callable
+        Vector function f(X) -> list of Hyper, shape (m,).
+    x : array-like
+        Point in R^n.
+    alpha : float, optional
+        Imaginary step size.
+    beta : float, optional
+        Nilpotent step size.
+
+    Returns
+    -------
+    ndarray of shape (m, n)
+        Jacobian matrix.
+
+    Notes
+    -----
+    Extracts the gradient of each output component simultaneously.
+    """
+    x = np.asarray(x, dtype=float)
+    n = len(x)
+    X = make_inputs(x, alpha=alpha, beta=beta)
+    F_vec = f(X)
+    J = np.zeros((len(F_vec), n))
+    for i, Fi in enumerate(F_vec):
+        for j in range(n):
+            J[i, j] = Fi.c[X[j].idx_i(j)] / alpha
+    return J
+
+
+def hessian_vector_product(f, x, v, alpha=1e-20, beta=1e-20):
+    """
+    Compute the Hessian-vector product H(x) @ v.
+
+    Parameters
+    ----------
+    f : callable
+        Scalar function f(X) -> Hyper.
+    x : array-like
+        Point in R^n.
+    v : array-like
+        Vector in R^n.
+    alpha : float, optional
+    beta : float, optional
+
+    Returns
+    -------
+    ndarray of shape (n,)
+        Hessian-vector product.
+    """
+    H = hessian(f, x, alpha=alpha, beta=beta)
+    return H @ np.asarray(v, dtype=float)
