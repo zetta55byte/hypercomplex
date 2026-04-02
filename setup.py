@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="hypercomplex",
-    version="0.1.0",
+    version="0.2.0",
     author="Zetta Byte",
     description="Exact derivatives via hypercomplex perturbation algebra",
     long_description=open("README.md").read(),
@@ -12,6 +12,7 @@ setup(
     install_requires=["numpy>=1.20", "scipy>=1.7"],
     extras_require={
         "viz": ["matplotlib>=3.4"],
+        "jax": ["jax>=0.4"],
         "dev": ["pytest", "sphinx"],
     },
     classifiers=[
