@@ -19,8 +19,8 @@ Quick Start
 
 References
 ----------
-[1] Byte, Z. (2026). Exact Second-Order Derivatives in One Forward Pass
-    Using Hypercomplex Perturbation Algebras. Zenodo.
+[1] Byte, Z. (2026). One-Pass Exact Hessians via Hypercomplex Perturbation:
+    A Vectorized Implementation with Implicit Layer Applications. Zenodo.
     DOI: 10.5281/zenodo.19344150
 
 [2] Byte, Z. (2026). Exact Ridge Curvature in One Evaluation.
