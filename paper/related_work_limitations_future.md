@@ -134,8 +134,8 @@ SIAM J. Numer. Anal. 4, 202–210.
 Squire, W., Trapp, G. (1998). Using complex variables to estimate derivatives of real
 functions. SIAM Rev. 40, 110–112.
 
-Byte, Z. (2026a). Exact Second-Order Derivatives in One Forward Pass Using
-Hypercomplex Perturbation Algebras. Zenodo. DOI: 10.5281/zenodo.19344150.
+Byte, Z. (2026a). One-Pass Exact Hessians via Hypercomplex Perturbation: A Vectorized
+Implementation with Implicit Layer Applications. Zenodo. DOI: 10.5281/zenodo.19344150.
 
 Byte, Z. (2026b). Exact Ridge Curvature in One Evaluation. Zenodo.
 DOI: 10.5281/zenodo.19356691.
