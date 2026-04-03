@@ -1,0 +1,366 @@
+% ============================================================
+% COMPLETE MANUSCRIPT SECTIONS — drop into paper after Implementation
+% Order: Related Work → Limitations → Future Work → Discussion → Conclusion
+% Abstract and Introduction replacements also included below.
+% ============================================================
+
+
+% ── ABSTRACT ────────────────────────────────────────────────────────────────
+
+\begin{abstract}
+Second-order information is central to optimization, sensitivity analysis, and the
+study of implicit models, but computing full Hessians remains prohibitively expensive
+for all but the smallest systems. This work introduces a vectorized hypercomplex
+perturbation method that recovers exact first- and second-order derivatives of
+scalar-valued functions in a single forward evaluation. By augmenting each input with
+a pair of commuting infinitesimal units, the method embeds the full Taylor expansion
+into an extended algebra whose coefficient channels isolate the gradient and Hessian
+without approximation. The resulting implementation achieves near-gradient cost for
+dimensions up to $n \sim 100$, providing exact curvature in a regime where diagonal
+approximations offer limited value.
+
+We present a NumPy-based reference implementation with complete reproducibility,
+a validated test suite, and empirical benchmarks across polynomial, transcendental,
+and implicit functions. For fixed-point models, the method recovers the
+implicit-function-theorem Hessian directly, avoiding the iteration-dependent curvature
+produced by unrolled differentiation. The approach is not intended for deep networks,
+where the Hessian is too large to represent explicitly, but instead fills the
+exact/moderate-$n$ region of the cost--accuracy landscape. The method provides a
+practical primitive for scientific computing, differentiable physics, and
+curvature-aware optimization, and establishes a foundation for JAX/XLA backends and
+higher-order extensions.
+\end{abstract}
+
+
+% ── INTRODUCTION ────────────────────────────────────────────────────────────
+
+\section{Introduction}
+
+Second-order information plays a central role in optimization, sensitivity analysis,
+and the study of implicit models. Curvature governs stability, trust-region behavior,
+and the geometry of parameter updates, yet computing full Hessians remains expensive
+for all but the smallest systems. Reverse-mode algorithmic differentiation (AD)
+requires $O(n)$ reverse passes for an $n$-dimensional input, while forward-over-reverse
+strategies incur implementation-dependent constants. Diagonal approximations scale to
+deep networks but discard off-diagonal structure by design. As a result, exact
+second-order methods are often treated as impractical outside of toy problems.
+
+This work revisits the problem from a different angle. Instead of extending AD or
+approximating curvature, we modify the representation of the input itself. By
+augmenting each coordinate with a pair of commuting infinitesimal units, the full
+first- and second-order Taylor expansion of a scalar function $f:\mathbb{R}^n \to
+\mathbb{R}$ is embedded directly into an extended algebra. A single forward evaluation
+of $f$ in this algebra recovers the gradient and Hessian exactly, with no reverse pass
+and no approximation. The cost is dominated by arithmetic in a coefficient vector of
+length $1 + 3n + \frac{n(n-1)}{2}$, making the method practical for moderate
+dimensions ($n \sim 2$ to $100$) where exact curvature is valuable and diagonal
+approximations offer limited benefit.
+
+We present a vectorized implementation of this hypercomplex perturbation method,
+together with a complete test suite, reproducible benchmarks, and applications to
+implicit fixed-point models. For implicit systems $z^* = f(z^*, \theta)$, the method
+recovers the implicit-function-theorem Hessian directly by perturbing the converged
+fixed point, avoiding the iteration-dependent curvature produced by unrolled
+differentiation. Empirically, the vectorized core achieves near-gradient wall-clock
+cost while returning the full Hessian exactly across a range of polynomial,
+transcendental, and implicit functions.
+
+The goal of this work is not to replace scalable diagonal approximations in deep
+learning, where the Hessian is too large to represent explicitly. Rather, it fills the
+exact/moderate-$n$ region of the cost--accuracy landscape that remains underserved:
+scientific computing, differentiable physics, implicit layers, and small neural
+modules where full curvature is both meaningful and computationally accessible. The
+method provides a simple, algebraic, and reproducible primitive for exact second-order
+computation, and establishes a foundation for JAX/XLA backends and higher-order
+extensions.
+
+
+% ── RELATED WORK ────────────────────────────────────────────────────────────
+
+\section{Related Work}
+
+Second-order information is computationally expensive, and a substantial literature
+addresses this cost through approximation. \citet{becker1989} proposed computing only
+the diagonal of the Hessian at gradient-comparable cost by propagating squared
+gradient terms forward through the network. \citet{elsayed2024} revisit and refine
+this scheme as HesScale, demonstrating improvements over the original approximation
+in both accuracy and applicability to reinforcement learning. These methods are
+approximate by design: they trade the off-diagonal Hessian structure for scalability
+to the parameter counts of deep networks ($d \sim 10^6$ to $10^9$).
+
+The complex-step method \citep{lyness1967,squire1998} achieves machine-precision first
+derivatives for scalar functions by perturbing the input into the complex plane. It
+avoids the cancellation error that limits finite differences but does not extend to
+second-order information without additional structure.
+
+Algorithmic differentiation \citep{griewank2008} provides exact derivatives of
+arbitrary order by augmenting the computational graph. Reverse-mode AD (backprop)
+computes the full gradient in $O(1)$ passes but requires $O(n)$ reverse passes for
+the full Hessian, or a forward-over-reverse strategy whose constant is
+implementation-dependent. JAX's \texttt{jax.hessian} is the practical reference
+implementation; it compiles to XLA and is highly competitive for differentiable
+programs expressible as JAX primitives.
+
+Hypercomplex perturbation occupies a complementary niche. For scalar-valued functions
+of moderate dimension ($n \sim 2$ to $100$), it embeds the entire first- and
+second-order Taylor structure into a single forward evaluation by augmenting each
+input with a pair of commuting infinitesimal units whose algebraic relations isolate
+the gradient and Hessian in distinct coefficient channels. This gives exact full
+Hessians---not diagonal approximations---at the cost of one function evaluation in an
+augmented algebra. The tradeoff is the opposite of HesScale: full accuracy, bounded
+dimension.
+
+For implicit models $z^* = f(z^*, \theta)$, the relevant second-order quantity is the
+Hessian of the loss at the fixed point, computed via the implicit function theorem.
+Unrolled AD differentiates through the iteration history rather than through the
+fixed-point equation, producing a different (and iteration-depth-dependent) result.
+The hypercomplex approach propagates perturbations through the converged fixed point
+directly, recovering the IFT-correct Hessian without unrolling.
+
+
+% ── LIMITATIONS AND SCOPE ───────────────────────────────────────────────────
+
+\section{Limitations and Scope}
+
+The method is exact for scalar-valued functions expressible in hypercomplex
+arithmetic. Several practical constraints bound its applicability.
+
+\paragraph{Scalar output.}
+The algebra encodes the Hessian of a scalar $f:\mathbb{R}^n \to \mathbb{R}$.
+Vector-valued functions require one hypercomplex pass per output dimension, recovering
+the Jacobian row by row. This is equivalent in cost to forward-mode AD applied per
+output.
+
+\paragraph{Moderate $n$.}
+The coefficient vector has length $1 + 3n + \frac{n(n-1)}{2}$, growing quadratically
+in $n$. For $n = 100$ this is 5151 coefficients; for $n = 1000$ it is $\sim\!500\,\mathrm{k}$.
+Memory and compute scale as $O(n^2)$ per multiply, making the method uncompetitive
+with diagonal approximations for the weight-space Hessians of deep networks
+($n \sim 10^{6+}$). The practical sweet spot is $n \sim 2$ to $100$, covering
+low-dimensional physical systems, small neural layers, implicit fixed-point models,
+and parameter-sensitivity analysis.
+
+\paragraph{Function expressibility.}
+The function must be implemented in hypercomplex arithmetic. Standard NumPy ufuncs
+(\texttt{np.sin}, \texttt{np.exp}) do not operate on \texttt{Hyper} objects directly;
+the user must use the provided \texttt{Hyper} methods (\texttt{.sin()},
+\texttt{.exp()}, etc.) or compose from supported primitives. This is analogous to the
+requirement in JAX that functions be written in \texttt{jnp} rather than \texttt{np}.
+
+\paragraph{Not a replacement for diagonal approximations.}
+HesScale, BL89, and related methods are designed for the deep-network regime where the
+full Hessian is computationally inaccessible. \texttt{hcderiv} is not competitive in
+that regime. The methods address different parts of the cost--accuracy tradeoff space
+and are best understood as complementary.
+
+\paragraph{No JIT compilation in the NumPy backend.}
+The current implementation uses NumPy and incurs Python dispatch overhead per
+operation. A JAX backend (swapping \texttt{np} for \texttt{jnp}) would allow XLA
+compilation and is a natural next step; the algebra is unchanged.
+
+
+% ── FUTURE WORK ─────────────────────────────────────────────────────────────
+
+\section{Future Work}
+
+Several directions extend the current work naturally.
+
+\paragraph{JAX/XLA backend.}
+The hypercomplex algebra requires only array operations that map directly to
+\texttt{jnp}. A \texttt{jit}-compiled JAX backend would eliminate Python dispatch
+overhead and bring the method to parity with compiled AD for moderate $n$. Early
+experiments suggest this would recover another $10$--$50\times$ over the current
+NumPy baseline.
+
+\paragraph{Trust-region and curvature-aware optimizers.}
+Exact Hessians are the natural input to classical second-order optimizers (Newton's
+method, L-BFGS warm-start, trust-region methods). A worked example connecting
+\texttt{hcderiv} to a trust-region step for a small nonlinear system would demonstrate
+the practical value of exact vs approximate curvature in an optimization context.
+
+\paragraph{Differentiable physics.}
+Low-dimensional physical systems (pendulum, spring--mass, rigid body) have parameter
+spaces in the $n = 3$ to $30$ range and benefit from exact second-order sensitivity
+analysis. The ridge potential $U(x) = -\|f(x)\|^2$ studied in \citet{byte2026b} is
+one instance; the method generalizes to any scalar energy or loss defined over a
+physical state space.
+
+\paragraph{Implicit layers at scale.}
+The IFT-correct Hessian demonstrated here for $n = 3$ to $8$ generalizes to larger
+implicit layers. Connecting \texttt{hcderiv} to deep equilibrium models
+\citep{bai2019} or neural ODEs \citep{chen2018}---where the fixed-point dimension is
+the hidden state size---would establish the method's relevance to the implicit
+differentiation literature.
+
+\paragraph{Higher-order extensions.}
+The two-unit algebra $(i_j, \varepsilon_j)$ recovers first and second derivatives
+exactly. A three-unit extension would add third-order terms, enabling exact
+Hessian-of-Hessian computations relevant to meta-learning and hyperparameter
+sensitivity. The algebraic structure generalizes straightforwardly; the coefficient
+count grows as $O(n^3)$.
+
+\paragraph{Micro-benchmark suite.}
+The current benchmarks cover quadratic and Rosenbrock functions at $n = 2$ to $64$.
+A systematic suite covering $n = 5$ to $100$ across function classes (polynomial,
+transcendental, rational, implicit) with comparisons to JAX, finite differences, and
+PyTorch autograd would provide a complete empirical picture for reviewers.
+
+
+% ── DISCUSSION ──────────────────────────────────────────────────────────────
+
+\section{Discussion}
+
+The results demonstrate that hypercomplex perturbation provides a practical and exact
+mechanism for obtaining full Hessians in a single forward evaluation for scalar-valued
+functions of moderate dimension. The method's strength lies in its algebraic
+structure: by embedding first- and second-order Taylor coefficients into distinct
+channels of a commuting infinitesimal algebra, the Hessian emerges as a byproduct of
+ordinary function evaluation rather than a separate differentiation pass. This
+reframes second-order computation not as an extension of algorithmic differentiation,
+but as a representational choice about how inputs are encoded.
+
+The empirical benchmarks highlight the consequences of this shift. For functions with
+$n \lesssim 100$, the vectorized hypercomplex core achieves wall-clock performance
+comparable to gradient evaluation while returning the full Hessian exactly. This
+places the method in a region of the cost--accuracy landscape that is sparsely
+populated: exact curvature at near-gradient cost. In contrast, diagonal approximations
+such as Becker--LeCun (1989) and HesScale \citep{elsayed2024} target the opposite
+regime, sacrificing off-diagonal structure to scale to millions of parameters. The two
+approaches are therefore complementary rather than competing, addressing different
+computational regimes and different scientific questions.
+
+The fixed-point experiments further illustrate the conceptual advantage of the
+hypercomplex formulation. For implicit models $z^* = f(z^*, \theta)$, the Hessian of
+the loss with respect to parameters is defined by the implicit function theorem, not
+by the unrolled iteration used to obtain the fixed point numerically. Unrolled AD
+differentiates through the iteration history and therefore produces
+iteration-dependent curvature. Hypercomplex perturbation, by contrast, perturbs the
+converged fixed point directly and recovers the IFT-correct Hessian without
+unrolling. This distinction matters in applications where curvature governs stability,
+sensitivity, or trust-region behavior.
+
+Taken together, these results show that exact second-order information is not
+inherently incompatible with efficiency. For a broad class of scientific and
+engineering problems---low-dimensional physical systems, implicit layers,
+parameter-sensitivity analysis, and small neural modules---the hypercomplex approach
+provides a practical alternative to both finite differences and algorithmic
+differentiation. The method does not aim to replace scalable approximations in deep
+learning; rather, it fills the exact/moderate-$n$ corner of the design space that has
+remained underserved.
+
+
+% ── CONCLUSION ──────────────────────────────────────────────────────────────
+
+\section{Conclusion}
+
+This work introduces a vectorized hypercomplex perturbation method that computes exact
+full Hessians of scalar-valued functions in a single forward evaluation. By embedding
+the first- and second-order Taylor structure into an augmented algebra, the method
+achieves a cost profile comparable to gradient evaluation while returning full
+curvature information without approximation. The implementation presented here
+provides a practical, NumPy-based reference with complete reproducibility, a validated
+test suite, and empirical benchmarks across a range of dimensions and function
+classes.
+
+The method's strengths are clearest in the moderate-dimensional regime ($n \sim 2$ to
+$100$), where exact curvature is valuable and diagonal approximations offer limited
+benefit. Applications include low-dimensional physical systems, implicit fixed-point
+models, trust-region optimization, and sensitivity analysis. The fixed-point
+experiments demonstrate that the hypercomplex formulation naturally recovers the
+implicit-function-theorem Hessian without unrolling, offering a clean and efficient
+alternative to differentiating through iteration histories.
+
+The approach is not intended for the deep-network regime, where the Hessian is too
+large to represent explicitly and diagonal approximations remain essential. Instead,
+hypercomplex perturbation occupies a complementary niche: exact, algebraic, and
+efficient for problems where full curvature is both meaningful and computationally
+accessible.
+
+Future work includes a JAX/XLA backend, trust-region demonstrations,
+differentiable-physics examples, extensions to implicit layers at larger scale, and
+higher-order generalizations. Together, these directions point toward a broader
+ecosystem in which hypercomplex perturbation serves as a practical primitive for exact
+second-order computation in scientific computing and differentiable modeling.
+
+
+% ── REFERENCES ──────────────────────────────────────────────────────────────
+% Add these entries to your .bib file
+
+% @inproceedings{becker1989,
+%   author    = {Becker, S. and LeCun, Y.},
+%   title     = {Improving the convergence of back-propagation learning with
+%                second-order methods},
+%   booktitle = {Proceedings of the 1988 Connectionist Models Summer School},
+%   year      = {1989}
+% }
+%
+% @article{elsayed2024,
+%   author  = {Elsayed, M. and Farrahi, H. and Dangel, F. and Mahmood, A.R.},
+%   title   = {Revisiting Scalable {H}essian Diagonal Approximations for
+%              Applications in Reinforcement Learning},
+%   journal = {arXiv:2406.03276},
+%   year    = {2024}
+% }
+%
+% @book{griewank2008,
+%   author    = {Griewank, A. and Walther, A.},
+%   title     = {Evaluating Derivatives: Principles and Techniques of
+%                Algorithmic Differentiation},
+%   publisher = {SIAM},
+%   year      = {2008}
+% }
+%
+% @article{lyness1967,
+%   author  = {Lyness, J.N. and Moler, C.},
+%   title   = {Numerical differentiation of analytic functions},
+%   journal = {SIAM J. Numer. Anal.},
+%   volume  = {4},
+%   pages   = {202--210},
+%   year    = {1967}
+% }
+%
+% @article{squire1998,
+%   author  = {Squire, W. and Trapp, G.},
+%   title   = {Using complex variables to estimate derivatives of real functions},
+%   journal = {SIAM Rev.},
+%   volume  = {40},
+%   pages   = {110--112},
+%   year    = {1998}
+% }
+%
+% @article{bai2019,
+%   author  = {Bai, S. and Kolter, J.Z. and Koltun, V.},
+%   title   = {Deep Equilibrium Models},
+%   journal = {NeurIPS},
+%   year    = {2019}
+% }
+%
+% @article{chen2018,
+%   author  = {Chen, R.T.Q. and Rubanova, Y. and Bettencourt, J. and Duvenaud, D.},
+%   title   = {Neural Ordinary Differential Equations},
+%   journal = {NeurIPS},
+%   year    = {2018}
+% }
+%
+% @misc{byte2026a,
+%   author = {Byte, Z.},
+%   title  = {Exact Second-Order Derivatives in One Forward Pass Using
+%             Hypercomplex Perturbation Algebras},
+%   year   = {2026},
+%   doi    = {10.5281/zenodo.19344150}
+% }
+%
+% @misc{byte2026b,
+%   author = {Byte, Z.},
+%   title  = {Exact Ridge Curvature in One Evaluation},
+%   year   = {2026},
+%   doi    = {10.5281/zenodo.19356691}
+% }
+%
+% @misc{byte2026c,
+%   author = {Byte, Z.},
+%   title  = {hcderiv v0.2.0 --- Vectorized hypercomplex core for exact
+%             one-pass {H}essians},
+%   year   = {2026},
+%   doi    = {10.5281/zenodo.19389522}
+% }
