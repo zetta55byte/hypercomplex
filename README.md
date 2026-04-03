@@ -1,5 +1,6 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19344150.svg)](https://doi.org/10.5281/zenodo.19344150)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19389522.svg)](https://doi.org/10.5281/zenodo.19389522)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19394700.svg)](https://doi.org/10.5281/zenodo.19394700)
 
 # hypercomplex
 
