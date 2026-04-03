@@ -368,3 +368,77 @@ second-order computation in scientific computing and differentiable modeling.
 %   year   = {2026},
 %   doi    = {10.5281/zenodo.19389522}
 % }
+
+
+% ── TRUST-REGION RESULTS (insert into Results section) ──────────────────────
+
+% Add this paragraph to the Results section, with \ref to the figure below.
+
+\subsection{Trust-Region Optimization}
+
+We apply the trust-region solver to a modified Rosenbrock function,
+$f(x) = (1 - x_0)^2 + 10(x_1 - x_0^2)^2$, starting from $(-1.2, 1.0)$.
+Three Hessian sources are compared: exact hypercomplex perturbation,
+central finite differences ($h = 10^{-5}$), and a diagonal identity baseline.
+
+The exact and finite-difference Hessians produce identical trajectories,
+converging in 16 iterations with 14 accepted steps, reaching
+$f = 1.8 \times 10^{-27}$ and $f = 4.0 \times 10^{-18}$ respectively
+(Figure~\ref{fig:trust_region}). The diagonal baseline requires 150 iterations,
+accumulates 11 rejected steps, and stalls at $f = 6.2 \times 10^{-3}$,
+never reaching $f < 10^{-6}$.
+
+The mechanism is direct: the off-diagonal Hessian entry at the starting point
+is approximately $40$. The diagonal approximation replaces this with zero,
+misaligning the search direction from the first step and forcing the solver
+into a near-gradient-descent regime. The exact and finite-difference Hessians
+both capture this coupling, yielding Newton-like steps that navigate the curved
+valley efficiently. The trust-region radius grows monotonically for both
+exact and FD solvers once the Newton step is consistently accepted, while
+the diagonal solver's radius oscillates as steps are repeatedly rejected on
+the valley walls.
+
+This example illustrates the core claim: in the moderate-$n$ regime where the
+full Hessian is representable, exact curvature qualitatively changes optimizer
+behavior. Diagonal approximations are not merely slower; they fail to exploit
+the geometric structure that makes Newton-type methods effective.
+
+% ── FIGURE ───────────────────────────────────────────────────────────────────
+
+% \begin{figure}[t]
+%   \centering
+%   \includegraphics[width=\textwidth]{figures/trust_region_trajectories.pdf}
+%   \caption{
+%     Trust-region optimization on the modified Rosenbrock function
+%     ($b = 10$) from $(-1.2, 1.0)$.
+%     \textbf{Left:} optimizer trajectories overlaid on contour lines of
+%     $\log(1 + f)$. Exact and FD solvers reach the optimum $(1, 1)$ in 16
+%     steps; the diagonal solver spirals in the valley without converging.
+%     \textbf{Center:} function value vs iteration (log scale). Exact and FD
+%     reach $f < 10^{-6}$ at iteration 14; diagonal stalls above $10^{-2}$.
+%     \textbf{Right:} trust-region radius adaptation. Exact and FD radii grow
+%     as Newton steps are accepted; diagonal radius oscillates due to repeated
+%     rejections (crosses). All three methods use identical step acceptance
+%     threshold $\eta = 0.15$ and initial radius $\delta_0 = 1$.
+%   }
+%   \label{fig:trust_region}
+% \end{figure}
+
+% ── IMPLEMENTATION PARAGRAPH (insert into Implementation section) ────────────
+
+% We provide a minimal trust-region implementation (\texttt{examples/trust\_region.py})
+% using the Cauchy point--Newton step blend \citep{nocedal2006}. The example
+% compares three Hessian sources on the modified Rosenbrock function and
+% produces Figure~\ref{fig:trust_region}. The implementation is intentionally
+% minimal: no dogleg, no truncated conjugate gradient, no preconditioner.
+% Its purpose is to isolate the effect of Hessian quality on step acceptance
+% and radius adaptation, not to benchmark optimizer implementations.
+
+% Add to references:
+% @book{nocedal2006,
+%   author    = {Nocedal, J. and Wright, S.J.},
+%   title     = {Numerical Optimization},
+%   edition   = {2nd},
+%   publisher = {Springer},
+%   year      = {2006}
+% }

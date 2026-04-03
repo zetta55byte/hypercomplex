@@ -62,7 +62,18 @@ Reproduce:
 python benchmarks/run_scaling.py
 python benchmarks/plot_scaling.py
 python benchmarks/implicit_layer_demo.py
+python examples/trust_region.py
 ```
+
+**Trust-region demo** — exact vs FD vs diagonal on modified Rosenbrock (`b=10`):
+
+| Method | Iters | Accepted | Rejected | Final f |
+|---|--:|--:|--:|--:|
+| Exact (hcderiv) | 16 | 14 | 2 | 1.8e-27 |
+| Finite Differences | 16 | 14 | 2 | 4.0e-18 |
+| Diagonal | 150 | 139 | 11 | 6.2e-03 |
+
+Diagonal discards the off-diagonal Hessian (~40 at the starting point) and never reaches f < 1e-6. Exact and FD both capture it and converge in 16 steps.
 
 ---
 
