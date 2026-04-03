@@ -1,0 +1,68 @@
+\begin{thebibliography}{10}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Bai et~al.(2019)Bai, Kolter, and Koltun]{bai2019}
+Shaojie Bai, J.~Zico Kolter, and Vladlen Koltun.
+\newblock Deep equilibrium models.
+\newblock \emph{Advances in Neural Information Processing Systems}, 32, 2019.
+
+\bibitem[Becker and LeCun(1989)]{becker1989}
+S.~Becker and Y.~LeCun.
+\newblock Improving the convergence of back-propagation learning with
+  second-order methods.
+\newblock In \emph{Proceedings of the 1988 Connectionist Models Summer School},
+  1989.
+
+\bibitem[Byte(2026{\natexlab{a}})]{byte2026b}
+Zetta Byte.
+\newblock Exact ridge curvature in one evaluation: Hypercomplex perturbation
+  unifies attractor--ridge geometry.
+\newblock Zenodo, 2026{\natexlab{a}}.
+\newblock URL \url{https://doi.org/10.5281/zenodo.19356691}.
+
+\bibitem[Byte(2026{\natexlab{b}})]{byte2026c}
+Zetta Byte.
+\newblock hcderiv v0.2.0 --- vectorized hypercomplex core for exact one-pass
+  {H}essians.
+\newblock Zenodo, 2026{\natexlab{b}}.
+\newblock URL \url{https://doi.org/10.5281/zenodo.19389522}.
+
+\bibitem[Chen et~al.(2018)Chen, Rubanova, Bettencourt, and Duvenaud]{chen2018}
+Ricky T.~Q. Chen, Yulia Rubanova, Jesse Bettencourt, and David Duvenaud.
+\newblock Neural ordinary differential equations.
+\newblock \emph{Advances in Neural Information Processing Systems}, 31, 2018.
+
+\bibitem[Elsayed et~al.(2024)Elsayed, Farrahi, Dangel, and
+  Mahmood]{elsayed2024}
+Mohamed Elsayed, Homayoon Farrahi, Felix Dangel, and A.~Rupam Mahmood.
+\newblock Revisiting scalable {H}essian diagonal approximations for
+  applications in reinforcement learning.
+\newblock \emph{arXiv preprint arXiv:2406.03276}, 2024.
+
+\bibitem[Griewank and Walther(2008)]{griewank2008}
+Andreas Griewank and Andrea Walther.
+\newblock \emph{Evaluating Derivatives: Principles and Techniques of
+  Algorithmic Differentiation}.
+\newblock SIAM, 2nd edition, 2008.
+
+\bibitem[Lyness and Moler(1967)]{lyness1967}
+J.~N. Lyness and C.~B. Moler.
+\newblock Numerical differentiation of analytic functions.
+\newblock \emph{SIAM Journal on Numerical Analysis}, 4\penalty0 (2):\penalty0
+  202--210, 1967.
+
+\bibitem[Nocedal and Wright(2006)]{nocedal2006}
+Jorge Nocedal and Stephen~J. Wright.
+\newblock \emph{Numerical Optimization}.
+\newblock Springer, 2nd edition, 2006.
+
+\bibitem[Squire and Trapp(1998)]{squire1998}
+William Squire and George Trapp.
+\newblock Using complex variables to estimate derivatives of real functions.
+\newblock \emph{SIAM Review}, 40\penalty0 (1):\penalty0 110--112, 1998.
+
+\end{thebibliography}

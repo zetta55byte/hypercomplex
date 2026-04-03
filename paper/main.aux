@@ -1,0 +1,73 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\citation{lyness1967,squire1998}
+\citation{griewank2008}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Background}{2}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}The Complex-Step Method}{2}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Dual Numbers and Automatic Differentiation}{2}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Extending to Multiple Dimensions}{2}{subsection.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}The Hypercomplex Algebra}{3}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Coefficient Layout}{3}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Multiplication Rules}{3}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Extraction}{3}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Correctness}{3}{subsection.3.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Implementation}{4}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Prototype vs Vectorized Core}{4}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}v0.2.0 Vectorization}{4}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Index precomputation.}{4}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Multiplication via outer product and gather.}{4}{section*.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Vectorized unary operations.}{4}{section*.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Measured Speedup}{5}{subsection.4.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Single \texttt  {\_\_mul\_\_} call timing: v0.1.0 vs v0.2.0 (NumPy backend).}}{5}{table.1}\protected@file@percent }
+\newlabel{tab:speedup}{{1}{5}{Single \texttt {\_\_mul\_\_} call timing: v0.1.0 vs v0.2.0 (NumPy backend)}{table.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Correctness}{5}{subsection.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Results}{5}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Scaling Benchmarks}{5}{subsection.5.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Full Hessian computation: hcderiv v0.2.0 vs FD vs JAX (quadratic function).}}{5}{table.2}\protected@file@percent }
+\newlabel{tab:scaling}{{2}{5}{Full Hessian computation: hcderiv v0.2.0 vs FD vs JAX (quadratic function)}{table.2}{}}
+\citation{nocedal2006}
+\citation{becker1989}
+\citation{elsayed2024}
+\citation{lyness1967,squire1998}
+\citation{griewank2008}
+\@writefile{toc}{\contentsline {paragraph}{FD step-size sensitivity.}{6}{section*.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Implicit Fixed-Point Layers}{6}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Trust-Region Optimization}{6}{subsection.5.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Trust-region optimization: modified Rosenbrock ($b=10$).}}{6}{table.3}\protected@file@percent }
+\newlabel{tab:trustregion}{{3}{6}{Trust-region optimization: modified Rosenbrock ($b=10$)}{table.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Related Work}{6}{section.6}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces  Trust-region optimization on the modified Rosenbrock function ($b=10$) from $(-1.2, 1.0)$. \textbf  {Left:} optimizer trajectories on contour lines of $\log (1+f)$. Exact and FD solvers reach the optimum $(1,1)$ in 16 steps; the diagonal solver spirals in the valley without converging. \textbf  {Center:} function value vs iteration (log scale). Exact and FD reach $f < 10^{-6}$ at iteration 14; diagonal stalls above $10^{-2}$. \textbf  {Right:} trust-region radius adaptation. Exact and FD radii grow as Newton steps are accepted; diagonal radius oscillates (crosses = rejected steps). }}{7}{figure.1}\protected@file@percent }
+\newlabel{fig:trust_region}{{1}{7}{Trust-region optimization on the modified Rosenbrock function ($b=10$) from $(-1.2, 1.0)$. \textbf {Left:} optimizer trajectories on contour lines of $\log (1+f)$. Exact and FD solvers reach the optimum $(1,1)$ in 16 steps; the diagonal solver spirals in the valley without converging. \textbf {Center:} function value vs iteration (log scale). Exact and FD reach $f < 10^{-6}$ at iteration 14; diagonal stalls above $10^{-2}$. \textbf {Right:} trust-region radius adaptation. Exact and FD radii grow as Newton steps are accepted; diagonal radius oscillates (crosses = rejected steps)}{figure.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Limitations and Scope}{7}{section.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Scalar output.}{7}{section*.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Moderate $n$.}{7}{section*.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Function expressibility.}{7}{section*.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Not a replacement for diagonal approximations.}{7}{section*.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{No JIT compilation in the NumPy backend.}{7}{section*.9}\protected@file@percent }
+\citation{byte2026b}
+\citation{bai2019}
+\citation{chen2018}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Future Work}{8}{section.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{JAX/XLA backend.}{8}{section*.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Differentiable physics.}{8}{section*.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Implicit layers at scale.}{8}{section*.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Higher-order extensions.}{8}{section*.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9}Discussion}{8}{section.9}\protected@file@percent }
+\citation{byte2026c}
+\bibstyle{plainnat}
+\bibdata{references}
+\bibcite{bai2019}{{1}{2019}{{Bai et~al.}}{{Bai, Kolter, and Koltun}}}
+\bibcite{becker1989}{{2}{1989}{{Becker and LeCun}}{{}}}
+\bibcite{byte2026b}{{3}{2026{a}}{{Byte}}{{}}}
+\bibcite{byte2026c}{{4}{2026{b}}{{Byte}}{{}}}
+\@writefile{toc}{\contentsline {section}{\numberline {10}Conclusion}{9}{section.10}\protected@file@percent }
+\bibcite{chen2018}{{5}{2018}{{Chen et~al.}}{{Chen, Rubanova, Bettencourt, and Duvenaud}}}
+\bibcite{elsayed2024}{{6}{2024}{{Elsayed et~al.}}{{Elsayed, Farrahi, Dangel, and Mahmood}}}
+\bibcite{griewank2008}{{7}{2008}{{Griewank and Walther}}{{}}}
+\bibcite{lyness1967}{{8}{1967}{{Lyness and Moler}}{{}}}
+\bibcite{nocedal2006}{{9}{2006}{{Nocedal and Wright}}{{}}}
+\bibcite{squire1998}{{10}{1998}{{Squire and Trapp}}{{}}}
+\gdef \@abspage@last{10}

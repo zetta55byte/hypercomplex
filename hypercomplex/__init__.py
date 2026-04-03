@@ -21,7 +21,7 @@ References
 ----------
 [1] Byte, Z. (2026). One-Pass Exact Hessians via Hypercomplex Perturbation:
     A Vectorized Implementation with Implicit Layer Applications. Zenodo.
-    DOI: 10.5281/zenodo.19344150
+    DOI: 10.5281/zenodo.19394700
 
 [2] Byte, Z. (2026). Exact Ridge Curvature in One Evaluation.
     Zenodo. DOI: 10.5281/zenodo.19356691

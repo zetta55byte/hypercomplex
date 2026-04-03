@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="hypercomplex",
+    name="hcderiv",
     version="0.2.0",
     author="Zetta Byte",
     description="Exact derivatives via hypercomplex perturbation algebra",

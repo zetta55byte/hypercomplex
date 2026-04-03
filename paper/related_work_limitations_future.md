@@ -135,7 +135,7 @@ Squire, W., Trapp, G. (1998). Using complex variables to estimate derivatives of
 functions. SIAM Rev. 40, 110–112.
 
 Byte, Z. (2026a). One-Pass Exact Hessians via Hypercomplex Perturbation: A Vectorized
-Implementation with Implicit Layer Applications. Zenodo. DOI: 10.5281/zenodo.19344150.
+Implementation with Implicit Layer Applications. Zenodo. DOI: 10.5281/zenodo.19394700.
 
 Byte, Z. (2026b). Exact Ridge Curvature in One Evaluation. Zenodo.
 DOI: 10.5281/zenodo.19356691.
