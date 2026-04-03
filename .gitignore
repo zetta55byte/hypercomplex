@@ -6,3 +6,9 @@ dist/
 build/
 .pytest_cache/
 *.egg
+paper/main.aux
+paper/main.blg
+paper/main.fdb_latexmk
+paper/main.fls
+paper/main.log
+paper/main.out
