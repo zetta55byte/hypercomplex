@@ -1,5 +1,6 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19394700.svg)](https://doi.org/10.5281/zenodo.19394700)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19389522.svg)](https://doi.org/10.5281/zenodo.19389522)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19420834.svg)](https://doi.org/10.5281/zenodo.19420834)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19394700.svg)](https://doi.org/10.5281/zenodo.19394700)
 
 # hypercomplex
@@ -10,6 +11,27 @@ One-pass extraction of exact gradients, Hessians, and ridge curvature —
 no finite differences, no graph tracing, no step-size tuning.
 
 ---
+
+
+## What's new in v0.3.0
+
+**JAX backend — drop-in, zero API changes.**
+
+```python
+pip install "hcderiv[jax]"
+
+H = hessian(f, x)                   # NumPy (unchanged)
+H = hessian(f, x, backend="jax")    # JAX — same result, XLA-ready
+```
+
+All public functions accept `backend="numpy"` (default) or `backend="jax"`:
+`grad`, `hessian`, `grad_and_hessian`, `jacobian`, `hessian_vector_product`.
+
+**Architecture:** backend registry (`hypercomplex/backends/`), backend-aware
+`Hyper` class with functional JAX ops (`.at[].set()`), index cache stays NumPy.
+Output always plain NumPy regardless of backend.
+
+**Tests:** 80/80 pass (59 NumPy + 21 JAX). JAX tests skip if JAX not installed.
 
 ## What's new in v0.2.0
 
