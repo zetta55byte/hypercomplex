@@ -46,20 +46,19 @@ def get_backend(name: BackendName = "numpy"):
     """
     if name == "numpy":
         import numpy as xp
+
         return xp
     elif name == "jax":
         try:
             import jax.numpy as xp
+
             return xp
         except ImportError:
             raise ImportError(
-                "JAX backend requires jax. "
-                "Install with:  pip install 'hcderiv[jax]'"
+                "JAX backend requires jax. " "Install with:  pip install 'hcderiv[jax]'"
             )
     else:
-        raise ValueError(
-            f"Unknown backend {name!r}. Choose 'numpy' or 'jax'."
-        )
+        raise ValueError(f"Unknown backend {name!r}. Choose 'numpy' or 'jax'.")
 
 
 def is_jax(name: BackendName) -> bool:

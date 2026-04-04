@@ -30,8 +30,19 @@ References
 from .core.hyper import Hyper
 from .backends import get_backend, BackendName
 from .core.utils import make_inputs, extract_gradient_hessian
-from .derivatives import grad, hessian, grad_and_hessian, jacobian, hessian_vector_product
-from .curvature import ridge_curvature, principal_curvatures, curvature_map, shape_operator
+from .derivatives import (
+    grad,
+    hessian,
+    grad_and_hessian,
+    jacobian,
+    hessian_vector_product,
+)
+from .curvature import (
+    ridge_curvature,
+    principal_curvatures,
+    curvature_map,
+    shape_operator,
+)
 
 __version__ = "0.3.0"
 __author__ = "Zetta Byte"

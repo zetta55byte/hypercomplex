@@ -24,10 +24,10 @@ gain nothing from tracing them.
 import numpy as np
 from functools import lru_cache
 
-
 # ---------------------------------------------------------------------------
 # Index-layout helpers (pure NumPy, cached by n)
 # ---------------------------------------------------------------------------
+
 
 @lru_cache(maxsize=64)
 def _build_index_cache(n):
@@ -42,26 +42,32 @@ def _build_index_cache(n):
     dict with sl_i, sl_eps, sl_diag, sl_off, off_js, off_ks, size.
     """
     n_off = n * (n - 1) // 2
-    size  = 1 + n + n + n + n_off
+    size = 1 + n + n + n + n_off
 
-    sl_i    = slice(1,         1 + n)
-    sl_eps  = slice(1 + n,     1 + 2*n)
-    sl_diag = slice(1 + 2*n,   1 + 3*n)
-    sl_off  = slice(1 + 3*n,   size)
+    sl_i = slice(1, 1 + n)
+    sl_eps = slice(1 + n, 1 + 2 * n)
+    sl_diag = slice(1 + 2 * n, 1 + 3 * n)
+    sl_off = slice(1 + 3 * n, size)
 
     js, ks = np.triu_indices(n, k=1)
     js = js.astype(np.intp)
     ks = ks.astype(np.intp)
 
     return dict(
-        sl_i=sl_i, sl_eps=sl_eps, sl_diag=sl_diag, sl_off=sl_off,
-        off_js=js, off_ks=ks, size=size,
+        sl_i=sl_i,
+        sl_eps=sl_eps,
+        sl_diag=sl_diag,
+        sl_off=sl_off,
+        off_js=js,
+        off_ks=ks,
+        size=size,
     )
 
 
 # ---------------------------------------------------------------------------
 # Hyper class
 # ---------------------------------------------------------------------------
+
 
 class Hyper:
     """
@@ -84,15 +90,15 @@ class Hyper:
     All units commute.  ``__mul__`` has no Python loops in the hot path.
     """
 
-    __slots__ = ('c', 'n', '_idx', '_xp')
+    __slots__ = ("c", "n", "_idx", "_xp")
 
     def __init__(self, coeffs, n, xp=None):
         if xp is None:
             xp = np
-        self._xp  = xp
-        self.n    = n
+        self._xp = xp
+        self.n = n
         self._idx = _build_index_cache(n)
-        self.c    = xp.asarray(coeffs, dtype=float)
+        self.c = xp.asarray(coeffs, dtype=float)
 
     # ── constructors ──────────────────────────────────────────────────────────
 
@@ -101,11 +107,11 @@ class Hyper:
         if xp is None:
             xp = np
         idx = _build_index_cache(n)
-        h   = object.__new__(cls)
-        h._xp  = xp
-        h.n    = n
+        h = object.__new__(cls)
+        h._xp = xp
+        h.n = n
         h._idx = idx
-        h.c    = xp.zeros(idx['size'])
+        h.c = xp.zeros(idx["size"])
         return h
 
     @classmethod
@@ -120,21 +126,26 @@ class Hyper:
 
     # ── index helpers (O(1), backwards compatible) ────────────────────────────
 
-    def idx_i(self, j):        return 1 + j
-    def idx_eps(self, j):      return 1 + self.n + j
-    def idx_diag_mix(self, j): return 1 + self.n + self.n + j
+    def idx_i(self, j):
+        return 1 + j
+
+    def idx_eps(self, j):
+        return 1 + self.n + j
+
+    def idx_diag_mix(self, j):
+        return 1 + self.n + self.n + j
 
     def idx_mix(self, j, k):
-        idx    = self._idx
-        js, ks = idx['off_js'], idx['off_ks']
+        idx = self._idx
+        js, ks = idx["off_js"], idx["off_ks"]
         matches = np.where((js == j) & (ks == k))[0]
         if matches.size == 0:
             raise IndexError(f"Invalid mix index ({j}, {k}) for n={self.n}")
-        return int(idx['sl_off'].start + matches[0])
+        return int(idx["sl_off"].start + matches[0])
 
     @staticmethod
     def size(n):
-        return _build_index_cache(n)['size']
+        return _build_index_cache(n)["size"]
 
     # ── internal helpers ──────────────────────────────────────────────────────
 
@@ -178,29 +189,36 @@ class Hyper:
         return NotImplemented
 
     def __mul__(self, other):
-        xp  = self._xp
+        xp = self._xp
 
         # ── scalar fast-path ──────────────────────────────────────────────────
         if isinstance(other, (int, float, np.floating)):
             return self._new(self.c * other)
 
-        n   = self.n
         idx = self._idx
         a, b = self.c, other.c
 
-        sl_i    = idx['sl_i']
-        sl_eps  = idx['sl_eps']
-        sl_diag = idx['sl_diag']
-        sl_off  = idx['sl_off']
-        js      = idx['off_js']
-        ks      = idx['off_ks']
+        sl_i = idx["sl_i"]
+        sl_eps = idx["sl_eps"]
+        sl_diag = idx["sl_diag"]
+        sl_off = idx["sl_off"]
+        js = idx["off_js"]
+        ks = idx["off_ks"]
 
         # real * anything (both ways), subtract double-counted real*real
-        out = a[0] * b + b[0] * a - a[0] * b[0] * xp.zeros_like(a).at[0].set(1.0) \
-              if xp is not np else (
-                  (lambda o: (o.__setitem__(slice(None), a[0]*b + b[0]*a),
-                              o.__setitem__(0, o[0] - a[0]*b[0]), o)[-1])(
-                      np.empty_like(a)))
+        out = (
+            a[0] * b + b[0] * a - a[0] * b[0] * xp.zeros_like(a).at[0].set(1.0)
+            if xp is not np
+            else (
+                (
+                    lambda o: (
+                        o.__setitem__(slice(None), a[0] * b + b[0] * a),
+                        o.__setitem__(0, o[0] - a[0] * b[0]),
+                        o,
+                    )[-1]
+                )(np.empty_like(a))
+            )
+        )
 
         # ── cleaner implementation for both backends ──────────────────────────
         if xp is np:
@@ -208,17 +226,17 @@ class Hyper:
             out[:] = a[0] * b + b[0] * a
             out[0] -= a[0] * b[0]
             out[0] -= np.dot(a[sl_i], b[sl_i])
-            a_i, b_i   = a[sl_i], b[sl_i]
+            a_i, b_i = a[sl_i], b[sl_i]
             a_eps, b_eps = a[sl_eps], b[sl_eps]
             P = np.outer(a_i, b_eps) + np.outer(b_i, a_eps)
             out[sl_diag] += np.diag(P)
-            out[sl_off]  += P[js, ks]
+            out[sl_off] += P[js, ks]
         else:
             # JAX: functional style using .at[].add()
             out = a[0] * b + b[0] * a
             out = out.at[0].add(-a[0] * b[0])
             out = out.at[0].add(-xp.dot(a[sl_i], b[sl_i]))
-            a_i, b_i   = a[sl_i], b[sl_i]
+            a_i, b_i = a[sl_i], b[sl_i]
             a_eps, b_eps = a[sl_eps], b[sl_eps]
             P = xp.outer(a_i, b_eps) + xp.outer(b_i, a_eps)
             out = out.at[sl_diag].add(xp.diag(P))
@@ -243,29 +261,28 @@ class Hyper:
         if abs(a_val) < 1e-300:
             raise ZeroDivisionError("Hyper real part is zero")
 
-        xp  = self._xp
-        n   = self.n
+        xp = self._xp
         idx = self._idx
-        sl_i, sl_eps = idx['sl_i'], idx['sl_eps']
-        sl_diag, sl_off = idx['sl_diag'], idx['sl_off']
-        js, ks = idx['off_js'], idx['off_ks']
+        sl_i, sl_eps = idx["sl_i"], idx["sl_eps"]
+        sl_diag, sl_off = idx["sl_diag"], idx["sl_off"]
+        js, ks = idx["off_js"], idx["off_ks"]
 
         s, a2, a3 = float(other), a_val**2, a_val**3
         c = self.c
 
         if xp is np:
             out = np.zeros_like(c)
-            out[0]      = s / a_val
-            out[sl_i]   = -s * c[sl_i]   / a2
+            out[0] = s / a_val
+            out[sl_i] = -s * c[sl_i] / a2
             out[sl_eps] = -s * c[sl_eps] / a2
-            ci, ceps    = c[sl_i], c[sl_eps]
+            ci, ceps = c[sl_i], c[sl_eps]
             out[sl_diag] = -s * c[sl_diag] / a2 + 2.0 * s * ci * ceps / a3
             cross = ci[js] * ceps[ks] + ci[ks] * ceps[js]
-            out[sl_off]  = -s * c[sl_off]  / a2 + 2.0 * s * cross / a3
+            out[sl_off] = -s * c[sl_off] / a2 + 2.0 * s * cross / a3
         else:
             out = xp.zeros_like(c)
             out = out.at[0].set(s / a_val)
-            out = out.at[sl_i].set(-s * c[sl_i]   / a2)
+            out = out.at[sl_i].set(-s * c[sl_i] / a2)
             out = out.at[sl_eps].set(-s * c[sl_eps] / a2)
             ci, ceps = c[sl_i], c[sl_eps]
             out = out.at[sl_diag].set(-s * c[sl_diag] / a2 + 2.0 * s * ci * ceps / a3)
@@ -295,7 +312,7 @@ class Hyper:
 
     def copy(self):
         xp = self._xp
-        c  = xp.array(self.c) if xp is not np else self.c.copy()
+        c = xp.array(self.c) if xp is not np else self.c.copy()
         return Hyper(c, self.n, xp=xp)
 
     def __repr__(self):
@@ -314,22 +331,21 @@ class Hyper:
         f0, f1, f2 : float
             f(a), f'(a), f''(a) at the real part a = self.c[0].
         """
-        xp  = self._xp
+        xp = self._xp
         idx = self._idx
-        sl_i, sl_eps = idx['sl_i'], idx['sl_eps']
-        sl_diag, sl_off = idx['sl_diag'], idx['sl_off']
-        js, ks = idx['off_js'], idx['off_ks']
+        sl_i, sl_eps = idx["sl_i"], idx["sl_eps"]
+        sl_diag, sl_off = idx["sl_diag"], idx["sl_off"]
+        js, ks = idx["off_js"], idx["off_ks"]
         c = self.c
 
         if xp is np:
             out = np.empty_like(c)
-            out[0]      = f0
-            out[sl_i]   = f1 * c[sl_i]
+            out[0] = f0
+            out[sl_i] = f1 * c[sl_i]
             out[sl_eps] = f1 * c[sl_eps]
-            ci, ceps    = c[sl_i], c[sl_eps]
+            ci, ceps = c[sl_i], c[sl_eps]
             out[sl_diag] = f1 * c[sl_diag] + f2 * ci * ceps
-            out[sl_off]  = (f1 * c[sl_off]
-                            + f2 * (ci[js] * ceps[ks] + ci[ks] * ceps[js]))
+            out[sl_off] = f1 * c[sl_off] + f2 * (ci[js] * ceps[ks] + ci[ks] * ceps[js])
         else:
             out = xp.zeros_like(c)
             out = out.at[0].set(f0)
@@ -344,30 +360,36 @@ class Hyper:
         return self._new(out)
 
     def exp(self):
-        xp = self._xp; a = float(self.c[0]); ea = float(xp.exp(xp.array(a)))
+        xp = self._xp
+        a = float(self.c[0])
+        ea = float(xp.exp(xp.array(a)))
         return self._apply_scalar_func(ea, ea, ea)
 
     def log(self):
         a = float(self.c[0])
-        return self._apply_scalar_func(float(np.log(a)), 1.0/a, -1.0/a**2)
+        return self._apply_scalar_func(float(np.log(a)), 1.0 / a, -1.0 / a**2)
 
     def sin(self):
         a = float(self.c[0])
-        return self._apply_scalar_func(float(np.sin(a)), float(np.cos(a)), -float(np.sin(a)))
+        return self._apply_scalar_func(
+            float(np.sin(a)), float(np.cos(a)), -float(np.sin(a))
+        )
 
     def cos(self):
         a = float(self.c[0])
-        return self._apply_scalar_func(float(np.cos(a)), -float(np.sin(a)), -float(np.cos(a)))
+        return self._apply_scalar_func(
+            float(np.cos(a)), -float(np.sin(a)), -float(np.cos(a))
+        )
 
     def tanh(self):
-        a  = float(self.c[0])
-        t  = float(np.tanh(a))
-        s  = 1.0 - t*t
+        a = float(self.c[0])
+        t = float(np.tanh(a))
+        s = 1.0 - t * t
         s2 = -2.0 * t * s
         return self._apply_scalar_func(t, s, s2)
 
     def sigmoid(self):
-        a  = float(self.c[0])
+        a = float(self.c[0])
         sg = 1.0 / (1.0 + np.exp(-a))
         f1 = sg * (1.0 - sg)
         f2 = f1 * (1.0 - 2.0 * sg)
@@ -375,7 +397,9 @@ class Hyper:
 
     def sqrt(self):
         a = float(self.c[0])
-        return self._apply_scalar_func(float(np.sqrt(a)), 0.5/np.sqrt(a), -0.25/a**1.5)
+        return self._apply_scalar_func(
+            float(np.sqrt(a)), 0.5 / np.sqrt(a), -0.25 / a**1.5
+        )
 
     def abs(self):
         a = float(self.c[0])

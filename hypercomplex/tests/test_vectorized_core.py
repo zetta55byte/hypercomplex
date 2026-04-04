@@ -19,15 +19,15 @@ import numpy as np
 import pytest
 from hypercomplex.core.hyper import Hyper, _build_index_cache
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def make_seed(n, j, alpha=1e-20, beta=1e-20):
     """Build the j-th hypercomplex input seed."""
     h = Hyper.zero(n)
-    h.c[h.idx_i(j)]   = alpha
+    h.c[h.idx_i(j)] = alpha
     h.c[h.idx_eps(j)] = beta
     return h
 
@@ -57,8 +57,10 @@ def ref_mul(a: Hyper, b: Hyper) -> Hyper:
         out.c[0] -= a.c[a.idx_i(j)] * b.c[b.idx_i(j)]
     for j in range(n):
         for k in range(n):
-            contrib = (a.c[a.idx_i(j)] * b.c[b.idx_eps(k)]
-                       + b.c[b.idx_i(j)] * a.c[a.idx_eps(k)])
+            contrib = (
+                a.c[a.idx_i(j)] * b.c[b.idx_eps(k)]
+                + b.c[b.idx_i(j)] * a.c[a.idx_eps(k)]
+            )
             if j == k:
                 out.c[out.idx_diag_mix(j)] += contrib
             elif j < k:
@@ -69,6 +71,7 @@ def ref_mul(a: Hyper, b: Hyper) -> Hyper:
 # ─────────────────────────────────────────────────────────────────────────────
 # index cache
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestIndexCache:
 
@@ -106,12 +109,14 @@ class TestIndexCache:
 # algebra identities
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestAlgebraIdentities:
 
     @pytest.mark.parametrize("n", [1, 2, 3, 5])
     def test_i_squared(self, n):
         for j in range(n):
-            ij = Hyper.zero(n); ij.c[ij.idx_i(j)] = 1.0
+            ij = Hyper.zero(n)
+            ij.c[ij.idx_i(j)] = 1.0
             sq = ij * ij
             assert abs(sq.c[0] - (-1.0)) < 1e-14, f"i_{j}^2 != -1"
             assert np.all(np.abs(sq.c[1:]) < 1e-14), f"i_{j}^2 has spurious coeffs"
@@ -119,7 +124,8 @@ class TestAlgebraIdentities:
     @pytest.mark.parametrize("n", [1, 2, 3, 5])
     def test_eps_squared_zero(self, n):
         for j in range(n):
-            ej = Hyper.zero(n); ej.c[ej.idx_eps(j)] = 1.0
+            ej = Hyper.zero(n)
+            ej.c[ej.idx_eps(j)] = 1.0
             sq = ej * ej
             assert np.all(np.abs(sq.c) < 1e-14), f"eps_{j}^2 != 0"
 
@@ -127,15 +133,19 @@ class TestAlgebraIdentities:
     def test_eps_cross_zero(self, n):
         for j in range(n):
             for k in range(j + 1, n):
-                ej = Hyper.zero(n); ej.c[ej.idx_eps(j)] = 1.0
-                ek = Hyper.zero(n); ek.c[ek.idx_eps(k)] = 1.0
+                ej = Hyper.zero(n)
+                ej.c[ej.idx_eps(j)] = 1.0
+                ek = Hyper.zero(n)
+                ek.c[ek.idx_eps(k)] = 1.0
                 assert np.all(np.abs((ej * ek).c) < 1e-14)
 
     @pytest.mark.parametrize("n", [2, 3, 5])
     def test_i_eps_diag(self, n):
         for j in range(n):
-            ij = Hyper.zero(n); ij.c[ij.idx_i(j)] = 1.0
-            ej = Hyper.zero(n); ej.c[ej.idx_eps(j)] = 1.0
+            ij = Hyper.zero(n)
+            ij.c[ij.idx_i(j)] = 1.0
+            ej = Hyper.zero(n)
+            ej.c[ej.idx_eps(j)] = 1.0
             prod = ij * ej
             expected = np.zeros(Hyper.size(n))
             expected[ij.idx_diag_mix(j)] = 1.0
@@ -145,8 +155,10 @@ class TestAlgebraIdentities:
     def test_i_eps_offdiag(self, n):
         for j in range(n):
             for k in range(j + 1, n):
-                ij = Hyper.zero(n); ij.c[ij.idx_i(j)] = 1.0
-                ek = Hyper.zero(n); ek.c[ek.idx_eps(k)] = 1.0
+                ij = Hyper.zero(n)
+                ij.c[ij.idx_i(j)] = 1.0
+                ek = Hyper.zero(n)
+                ek.c[ek.idx_eps(k)] = 1.0
                 prod = ij * ek
                 expected = np.zeros(Hyper.size(n))
                 expected[ij.idx_mix(j, k)] = 1.0
@@ -176,20 +188,25 @@ class TestAlgebraIdentities:
         for _ in range(15):
             a = Hyper(rng.standard_normal(Hyper.size(n)), n)
             b = Hyper(rng.standard_normal(Hyper.size(n)), n)
-            assert np.allclose((a * b).c, ref_mul(a, b).c, atol=1e-13), \
-                f"Vectorized mul != reference for n={n}"
+            assert np.allclose(
+                (a * b).c, ref_mul(a, b).c, atol=1e-13
+            ), f"Vectorized mul != reference for n={n}"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # gradient and Hessian extraction
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestDerivativeExtraction:
 
-    @pytest.mark.parametrize("n,x,expected_g,expected_H", [
-        # f = x0^2 + 3*x0*x1 + 2*x1^2
-        (2, [1.0, 2.0], [8.0, 11.0], [[2.0, 3.0], [3.0, 4.0]]),
-    ])
+    @pytest.mark.parametrize(
+        "n,x,expected_g,expected_H",
+        [
+            # f = x0^2 + 3*x0*x1 + 2*x1^2
+            (2, [1.0, 2.0], [8.0, 11.0], [[2.0, 3.0], [3.0, 4.0]]),
+        ],
+    )
     def test_quadratic_n2(self, n, x, expected_g, expected_H):
         alpha = beta = 1e-20
         X = [make_seed(n, j, alpha, beta) for j in range(n)]
@@ -204,7 +221,8 @@ class TestDerivativeExtraction:
         n, alpha, beta = 3, 1e-20, 1e-20
         x = [1.0, 2.0, 3.0]
         X = [make_seed(n, j, alpha, beta) for j in range(n)]
-        for j in range(n): X[j].c[0] = x[j]
+        for j in range(n):
+            X[j].c[0] = x[j]
         F = X[0] * X[1] * X[2]
         g, H = extract(F, n, alpha, beta)
         assert np.allclose(g, [6.0, 3.0, 2.0], atol=1e-10)
@@ -217,7 +235,8 @@ class TestDerivativeExtraction:
         alpha = beta = 1e-20
         x = np.arange(1.0, n + 1.0)
         X = [make_seed(n, j, alpha, beta) for j in range(n)]
-        for j in range(n): X[j].c[0] = x[j]
+        for j in range(n):
+            X[j].c[0] = x[j]
         F = sum(X[j] ** 2 for j in range(n))
         g, H = extract(F, n, alpha, beta)
         assert np.allclose(g, 2 * x, atol=1e-10)
@@ -228,73 +247,93 @@ class TestDerivativeExtraction:
 # unary operations
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestUnaryOps:
 
     def _check_unary(self, func_hc, f0_fn, f1_fn, f2_fn, a_val, n=3):
         """Check that a unary op matches its analytic chain-rule expansion."""
         alpha = beta = 1e-20
         X = [make_seed(n, j, alpha, beta) for j in range(n)]
-        for j in range(n): X[j].c[0] = a_val
+        for j in range(n):
+            X[j].c[0] = a_val
         # apply op to X[0] only
         h = X[0].copy()
         result = func_hc(h)
         # expected: f0 at real part, f1 in gradient channel, f2 in Hessian
         assert abs(result.c[0] - f0_fn(a_val)) < 1e-12, "real part wrong"
-        assert abs(result.c[result.idx_i(0)] - f1_fn(a_val) * alpha) < 1e-12 * abs(f1_fn(a_val))
+        assert abs(result.c[result.idx_i(0)] - f1_fn(a_val) * alpha) < 1e-12 * abs(
+            f1_fn(a_val)
+        )
 
     def test_exp(self):
         import math
-        self._check_unary(lambda h: h.exp(),
-                          math.exp, math.exp, math.exp, 0.7)
+
+        self._check_unary(lambda h: h.exp(), math.exp, math.exp, math.exp, 0.7)
 
     def test_sin(self):
         import math
-        self._check_unary(lambda h: h.sin(),
-                          math.sin, math.cos, lambda a: -math.sin(a), 0.5)
+
+        self._check_unary(
+            lambda h: h.sin(), math.sin, math.cos, lambda a: -math.sin(a), 0.5
+        )
 
     def test_cos(self):
         import math
-        self._check_unary(lambda h: h.cos(),
-                          math.cos, lambda a: -math.sin(a),
-                          lambda a: -math.cos(a), 1.2)
+
+        self._check_unary(
+            lambda h: h.cos(),
+            math.cos,
+            lambda a: -math.sin(a),
+            lambda a: -math.cos(a),
+            1.2,
+        )
 
     def test_tanh(self):
         import math
+
         self._check_unary(
             lambda h: h.tanh(),
             math.tanh,
             lambda a: 1.0 - math.tanh(a) ** 2,
             lambda a: -2 * math.tanh(a) * (1 - math.tanh(a) ** 2),
-            0.6)
+            0.6,
+        )
 
     def test_sigmoid(self):
-        def sg(a): return 1.0 / (1.0 + np.exp(-a))
-        def dsg(a): s = sg(a); return s * (1 - s)
-        self._check_unary(lambda h: h.sigmoid(), sg, dsg,
-                          lambda a: dsg(a) * (1 - 2 * sg(a)), 0.4)
+        def sg(a):
+            return 1.0 / (1.0 + np.exp(-a))
+
+        def dsg(a):
+            s = sg(a)
+            return s * (1 - s)
+
+        self._check_unary(
+            lambda h: h.sigmoid(), sg, dsg, lambda a: dsg(a) * (1 - 2 * sg(a)), 0.4
+        )
 
     def test_sqrt(self):
         import math
+
         self._check_unary(
             lambda h: h.sqrt(),
             math.sqrt,
             lambda a: 0.5 / math.sqrt(a),
-            lambda a: -0.25 / a ** 1.5,
-            1.5)
+            lambda a: -0.25 / a**1.5,
+            1.5,
+        )
 
     def test_log(self):
         import math
+
         self._check_unary(
-            lambda h: h.log(),
-            math.log,
-            lambda a: 1.0 / a,
-            lambda a: -1.0 / a ** 2,
-            2.0)
+            lambda h: h.log(), math.log, lambda a: 1.0 / a, lambda a: -1.0 / a**2, 2.0
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # __rtruediv__ (exact inversion)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestExactInversion:
 
@@ -313,7 +352,8 @@ class TestExactInversion:
             # Use small perturbation so truncation is valid
             a_val = rng.uniform(0.5, 2.0)
             X = [make_seed(n, j, alpha, beta) for j in range(n)]
-            for j in range(n): X[j].c[0] = a_val
+            for j in range(n):
+                X[j].c[0] = a_val
             h = X[0]
             r = 1.0 / h
             # Real part must be 1/a
@@ -330,20 +370,27 @@ class TestExactInversion:
             vec = 3.0 / h
 
             # reference: loop-based (from original repo logic)
-            a = c[0]; a2 = a*a; a3 = a2*a; s = 3.0
+            a = c[0]
+            a2 = a * a
+            a3 = a2 * a
+            s = 3.0
             ref = Hyper.zero(n)
             ref.c[0] = s / a
             for j in range(n):
-                ref.c[ref.idx_i(j)]   = -s * c[ref.idx_i(j)]   / a2
+                ref.c[ref.idx_i(j)] = -s * c[ref.idx_i(j)] / a2
                 ref.c[ref.idx_eps(j)] = -s * c[ref.idx_eps(j)] / a2
             for j in range(n):
-                ci = c[h.idx_i(j)]; ce = c[h.idx_eps(j)]; cd = c[h.idx_diag_mix(j)]
-                ref.c[ref.idx_diag_mix(j)] = -s*cd/a2 + 2*s*ci*ce/a3
+                ci = c[h.idx_i(j)]
+                ce = c[h.idx_eps(j)]
+                cd = c[h.idx_diag_mix(j)]
+                ref.c[ref.idx_diag_mix(j)] = -s * cd / a2 + 2 * s * ci * ce / a3
             for j in range(n):
-                for k in range(j+1, n):
-                    c_off = c[h.idx_mix(j,k)]
-                    cross = c[h.idx_i(j)]*c[h.idx_eps(k)] + c[h.idx_i(k)]*c[h.idx_eps(j)]
-                    ref.c[ref.idx_mix(j,k)] = -s*c_off/a2 + 2*s*cross/a3
+                for k in range(j + 1, n):
+                    c_off = c[h.idx_mix(j, k)]
+                    cross = (
+                        c[h.idx_i(j)] * c[h.idx_eps(k)]
+                        + c[h.idx_i(k)] * c[h.idx_eps(j)]
+                    )
+                    ref.c[ref.idx_mix(j, k)] = -s * c_off / a2 + 2 * s * cross / a3
 
-            assert np.allclose(vec.c, ref.c, atol=1e-12), \
-                f"rtruediv mismatch for n={n}"
+            assert np.allclose(vec.c, ref.c, atol=1e-12), f"rtruediv mismatch for n={n}"

@@ -7,7 +7,10 @@ Tools for attractor-ridge analysis of dynamical systems.
 import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.optimize import fsolve
-from ..curvature import curvature_map, ridge_curvature
+from ..curvature import (
+    curvature_map as curvature_map,
+    ridge_curvature as ridge_curvature,
+)
 
 
 def make_ridge_potential(f_ode):
@@ -30,9 +33,11 @@ def make_ridge_potential(f_ode):
     f_ode must be re-implemented in Hyper arithmetic separately for
     hypercomplex evaluation.
     """
+
     def U(x):
         fv = np.asarray(f_ode(x))
         return -float(np.dot(fv, fv))
+
     return U
 
 
@@ -59,6 +64,7 @@ def find_fixed_points(f_ode, n, grid_bounds, grid_points=10):
     low, high = grid_bounds
     fps = []
     from itertools import product
+
     grid = np.linspace(low, high, grid_points)
     for x0 in product(*[grid] * n):
         x0 = np.array(x0)
@@ -98,16 +104,17 @@ def classify_fixed_points(f_ode, fps, h=1e-6):
         n = len(fp)
         J = np.zeros((n, n))
         for i in range(n):
-            ei = np.zeros(n); ei[i] = 1
-            J[:, i] = (f_ode(fp + h*ei) - f_ode(fp - h*ei)) / (2*h)
+            ei = np.zeros(n)
+            ei[i] = 1
+            J[:, i] = (f_ode(fp + h * ei) - f_ode(fp - h * ei)) / (2 * h)
         evals = np.linalg.eigvals(J).real
         if np.all(evals < 0):
-            ftype = 'stable'
+            ftype = "stable"
         elif np.all(evals > 0):
-            ftype = 'unstable'
+            ftype = "unstable"
         else:
-            ftype = 'saddle'
-        results.append({'point': fp, 'eigenvalues': evals, 'type': ftype})
+            ftype = "saddle"
+        results.append({"point": fp, "eigenvalues": evals, "type": ftype})
     return results
 
 
@@ -136,11 +143,15 @@ def basin_map(f_ode, xs, ys, t_end=50, tol=1e-8):
     xs = np.asarray(xs)
     ys = np.asarray(ys)
     result = np.zeros((len(ys), len(xs)))
-    def rhs(t, y): return f_ode(y)
+
+    def rhs(t, y):
+        return f_ode(y)
+
     for i, y0 in enumerate(ys):
         for j, x0 in enumerate(xs):
-            sol = solve_ivp(rhs, [0, t_end], [x0, y0],
-                            method='RK45', rtol=tol, atol=tol)
+            sol = solve_ivp(
+                rhs, [0, t_end], [x0, y0], method="RK45", rtol=tol, atol=tol
+            )
             yf = sol.y[:, -1]
             result[i, j] = 1 if yf[0] > yf[1] else 0
     return result
@@ -169,19 +180,30 @@ def separatrix(f_ode, saddle, t_back=20):
     h = 1e-6
     J = np.zeros((n, n))
     for i in range(n):
-        ei = np.zeros(n); ei[i] = 1
-        J[:, i] = (f_ode(saddle + h*ei) - f_ode(saddle - h*ei)) / (2*h)
+        ei = np.zeros(n)
+        ei[i] = 1
+        J[:, i] = (f_ode(saddle + h * ei) - f_ode(saddle - h * ei)) / (2 * h)
     evals, evecs = np.linalg.eig(J)
     stable_idx = np.argmin(evals.real)
     v = evecs[:, stable_idx].real
     v = v / np.linalg.norm(v)
 
     branches = []
-    def rhs_back(t, y): return -f_ode(y)
+
+    def rhs_back(t, y):
+        return -f_ode(y)
+
     for sign in [1, -1]:
         x0 = saddle + sign * 0.01 * v
-        sol = solve_ivp(rhs_back, [0, t_back], x0,
-                        method='RK45', rtol=1e-8, atol=1e-10, max_step=0.1)
+        sol = solve_ivp(
+            rhs_back,
+            [0, t_back],
+            x0,
+            method="RK45",
+            rtol=1e-8,
+            atol=1e-10,
+            max_step=0.1,
+        )
         pts = sol.y.T
         mask = np.all((pts > 0) & (pts < 10), axis=1)
         branches.append(pts[mask])

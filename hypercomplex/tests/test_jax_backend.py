@@ -14,15 +14,15 @@ import pytest
 jax = pytest.importorskip("jax", reason="JAX not installed")
 jax.config.update("jax_enable_x64", True)
 
-from hypercomplex import grad, hessian, grad_and_hessian
-from hypercomplex.core.hyper import Hyper
-from hypercomplex.backends import get_backend
-
+from hypercomplex import grad, hessian, grad_and_hessian  # noqa: E402
+from hypercomplex.core.hyper import Hyper  # noqa: E402
+from hypercomplex.backends import get_backend  # noqa: E402
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
+
 def f_quad(X):
-    return X[0]**2 + X[0]*X[1]*3 + X[1]**2*2
+    return X[0] ** 2 + X[0] * X[1] * 3 + X[1] ** 2 * 2
 
 
 def f_triple(X):
@@ -34,7 +34,7 @@ def f_sin_exp(X):
 
 
 def f_tanh(X):
-    return X[0].tanh() + X[1]**2
+    return X[0].tanh() + X[1] ** 2
 
 
 def f_sum_sq(X):
@@ -46,15 +46,18 @@ def f_sum_sq(X):
 
 # ── backend import ────────────────────────────────────────────────────────────
 
+
 class TestBackendRegistry:
 
     def test_get_jax_backend(self):
         xp = get_backend("jax")
         import jax.numpy as jnp
+
         assert xp is jnp
 
     def test_get_numpy_backend(self):
         import numpy as np2
+
         assert get_backend("numpy") is np2
 
     def test_unknown_backend_raises(self):
@@ -64,30 +67,39 @@ class TestBackendRegistry:
 
 # ── correctness: JAX vs NumPy ────────────────────────────────────────────────
 
+
 class TestJAXvsNumPy:
     """JAX results must match NumPy results to machine precision."""
 
-    @pytest.mark.parametrize("x,f", [
-        ([1.0, 2.0], f_quad),
-        ([0.5, 1.0], f_sin_exp),
-        ([0.3, -0.7], f_tanh),
-    ])
+    @pytest.mark.parametrize(
+        "x,f",
+        [
+            ([1.0, 2.0], f_quad),
+            ([0.5, 1.0], f_sin_exp),
+            ([0.3, -0.7], f_tanh),
+        ],
+    )
     def test_grad_matches_numpy(self, x, f):
         g_np = grad(f, x, backend="numpy")
         g_jx = grad(f, x, backend="jax")
-        assert np.allclose(g_np, g_jx, atol=1e-12), \
-            f"grad mismatch: numpy={g_np} jax={g_jx}"
+        assert np.allclose(
+            g_np, g_jx, atol=1e-12
+        ), f"grad mismatch: numpy={g_np} jax={g_jx}"
 
-    @pytest.mark.parametrize("x,f", [
-        ([1.0, 2.0], f_quad),
-        ([0.5, 1.0], f_sin_exp),
-        ([0.3, -0.7], f_tanh),
-    ])
+    @pytest.mark.parametrize(
+        "x,f",
+        [
+            ([1.0, 2.0], f_quad),
+            ([0.5, 1.0], f_sin_exp),
+            ([0.3, -0.7], f_tanh),
+        ],
+    )
     def test_hessian_matches_numpy(self, x, f):
         H_np = hessian(f, x, backend="numpy")
         H_jx = hessian(f, x, backend="jax")
-        assert np.allclose(H_np, H_jx, atol=1e-12), \
-            f"hessian mismatch:\nnumpy=\n{H_np}\njax=\n{H_jx}"
+        assert np.allclose(
+            H_np, H_jx, atol=1e-12
+        ), f"hessian mismatch:\nnumpy=\n{H_np}\njax=\n{H_jx}"
 
     def test_triple_product_n3(self):
         x = [1.0, 2.0, 3.0]
@@ -116,6 +128,7 @@ class TestJAXvsNumPy:
 
 # ── analytic correctness ──────────────────────────────────────────────────────
 
+
 class TestJAXAnalytic:
 
     def test_quadratic_analytic(self):
@@ -123,7 +136,7 @@ class TestJAXAnalytic:
         g = grad(f_quad, [1.0, 2.0], backend="jax")
         H = hessian(f_quad, [1.0, 2.0], backend="jax")
         assert np.allclose(g, [8.0, 11.0], atol=1e-12)
-        assert np.allclose(H, [[2., 3.], [3., 4.]], atol=1e-12)
+        assert np.allclose(H, [[2.0, 3.0], [3.0, 4.0]], atol=1e-12)
 
     def test_triple_product_analytic(self):
         """f = x0*x1*x2, grad=[x1x2, x0x2, x0x1], H off-diag from permutations"""
@@ -135,22 +148,25 @@ class TestJAXAnalytic:
 
 # ── Hyper object with JAX backend ────────────────────────────────────────────
 
+
 class TestHyperJAX:
 
     def test_hyper_zero_jax(self):
         import jax.numpy as jnp
+
         h = Hyper.zero(3, xp=jnp)
         assert h._xp is jnp
         assert float(h.c[0]) == 0.0
 
     def test_hyper_real_jax(self):
         import jax.numpy as jnp
+
         h = Hyper.real(3, 5.0, xp=jnp)
         assert float(h.c[0]) == 5.0
 
     def test_mul_jax_matches_numpy(self):
         import jax.numpy as jnp
-        import numpy as np2
+
         rng = np.random.default_rng(42)
         n = 4
         a_np = Hyper(rng.standard_normal(Hyper.size(n)), n)
@@ -163,23 +179,26 @@ class TestHyperJAX:
 
     def test_unary_ops_jax(self):
         import jax.numpy as jnp
+
         for method in ["exp", "tanh", "sin", "cos", "sigmoid", "sqrt", "log"]:
             h_np = Hyper.real(2, 0.7)
             h_jx = Hyper.real(2, 0.7, xp=jnp)
             r_np = getattr(h_np, method)()
             r_jx = getattr(h_jx, method)()
-            assert np.allclose(np.array(r_jx.c), r_np.c, atol=1e-12), \
-                f"{method} mismatch"
+            assert np.allclose(
+                np.array(r_jx.c), r_np.c, atol=1e-12
+            ), f"{method} mismatch"
 
 
 # ── jit=False path ────────────────────────────────────────────────────────────
+
 
 class TestJITFlag:
 
     def test_jit_false_same_result(self):
         x = [1.0, 2.0]
-        H_jit    = hessian(f_quad, x, backend="jax", jit=True)
-        H_nojit  = hessian(f_quad, x, backend="jax", jit=False)
-        H_numpy  = hessian(f_quad, x, backend="numpy")
-        assert np.allclose(H_jit,   H_numpy, atol=1e-12)
+        H_jit = hessian(f_quad, x, backend="jax", jit=True)
+        H_nojit = hessian(f_quad, x, backend="jax", jit=False)
+        H_numpy = hessian(f_quad, x, backend="numpy")
+        assert np.allclose(H_jit, H_numpy, atol=1e-12)
         assert np.allclose(H_nojit, H_numpy, atol=1e-12)

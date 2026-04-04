@@ -24,12 +24,12 @@ array([2., 4.], dtype=float64)
 from __future__ import annotations
 import numpy as np
 from ..core.utils import make_inputs, extract_gradient_hessian
-from ..backends import get_backend, is_jax
-
+from ..backends import get_backend
 
 # ---------------------------------------------------------------------------
 # Internal: JIT wrapper
 # ---------------------------------------------------------------------------
+
 
 def _maybe_jit(fn, use_jit: bool, backend: str):
     """
@@ -48,6 +48,7 @@ def _maybe_jit(fn, use_jit: bool, backend: str):
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def grad(f, x, alpha=1e-20, beta=1e-20, backend="numpy", jit=True):
     """
@@ -83,10 +84,10 @@ def grad(f, x, alpha=1e-20, beta=1e-20, backend="numpy", jit=True):
     array([2., 4.])
     """
     xp = get_backend(backend)
-    x  = np.asarray(x, dtype=float)
-    X  = make_inputs(x, alpha=alpha, beta=beta, xp=xp)
+    x = np.asarray(x, dtype=float)
+    X = make_inputs(x, alpha=alpha, beta=beta, xp=xp)
     f_ = _maybe_jit(f, jit, backend)
-    F  = f_(X)
+    F = f_(X)
     g, _ = extract_gradient_hessian(F, X, alpha=alpha, beta=beta)
     return g
 
@@ -125,10 +126,10 @@ def hessian(f, x, alpha=1e-20, beta=1e-20, backend="numpy", jit=True):
            [3., 4.]])
     """
     xp = get_backend(backend)
-    x  = np.asarray(x, dtype=float)
-    X  = make_inputs(x, alpha=alpha, beta=beta, xp=xp)
+    x = np.asarray(x, dtype=float)
+    X = make_inputs(x, alpha=alpha, beta=beta, xp=xp)
     f_ = _maybe_jit(f, jit, backend)
-    F  = f_(X)
+    F = f_(X)
     _, H = extract_gradient_hessian(F, X, alpha=alpha, beta=beta)
     return H
 
@@ -151,10 +152,10 @@ def grad_and_hessian(f, x, alpha=1e-20, beta=1e-20, backend="numpy", jit=True):
     H    : ndarray of shape (n, n)
     """
     xp = get_backend(backend)
-    x  = np.asarray(x, dtype=float)
-    X  = make_inputs(x, alpha=alpha, beta=beta, xp=xp)
+    x = np.asarray(x, dtype=float)
+    X = make_inputs(x, alpha=alpha, beta=beta, xp=xp)
     f_ = _maybe_jit(f, jit, backend)
-    F  = f_(X)
+    F = f_(X)
     return extract_gradient_hessian(F, X, alpha=alpha, beta=beta)
 
 
@@ -177,9 +178,9 @@ def jacobian(f, x, alpha=1e-20, beta=1e-20, backend="numpy", jit=True):
     ndarray of shape (m, n)
     """
     xp = get_backend(backend)
-    x  = np.asarray(x, dtype=float)
-    n  = len(x)
-    X  = make_inputs(x, alpha=alpha, beta=beta, xp=xp)
+    x = np.asarray(x, dtype=float)
+    n = len(x)
+    X = make_inputs(x, alpha=alpha, beta=beta, xp=xp)
     f_ = _maybe_jit(f, jit, backend)
     F_vec = f_(X)
     J = np.zeros((len(F_vec), n))
@@ -189,8 +190,7 @@ def jacobian(f, x, alpha=1e-20, beta=1e-20, backend="numpy", jit=True):
     return J
 
 
-def hessian_vector_product(f, x, v, alpha=1e-20, beta=1e-20,
-                           backend="numpy", jit=True):
+def hessian_vector_product(f, x, v, alpha=1e-20, beta=1e-20, backend="numpy", jit=True):
     """
     Compute the Hessian-vector product H(x) @ v.
 

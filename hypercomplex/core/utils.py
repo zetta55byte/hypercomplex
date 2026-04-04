@@ -30,16 +30,16 @@ def make_inputs(x, alpha=1e-20, beta=1e-20, xp=None):
     """
     if xp is None:
         xp = np
-    x = np.asarray(x, dtype=float)   # always read input as numpy
+    x = np.asarray(x, dtype=float)  # always read input as numpy
     n = len(x)
     X = []
     for j in range(n):
         h = Hyper.zero(n, xp=xp)
         # Use .at[] for JAX, direct index for NumPy
         if xp is np:
-            h.c[0]             = x[j]
-            h.c[h.idx_i(j)]    = alpha
-            h.c[h.idx_eps(j)]  = beta
+            h.c[0] = x[j]
+            h.c[h.idx_i(j)] = alpha
+            h.c[h.idx_eps(j)] = beta
         else:
             h.c = h.c.at[0].set(x[j])
             h.c = h.c.at[h.idx_i(j)].set(alpha)
@@ -70,7 +70,7 @@ def extract_gradient_hessian(F, X, alpha=1e-20, beta=1e-20):
     H : ndarray of shape (n, n)
         Exact Hessian matrix.
     """
-    n  = len(X)
+    n = len(X)
     ab = alpha * beta
 
     # Always return plain NumPy arrays (backend-agnostic output)
