@@ -23,6 +23,7 @@ import time
 try:
     import jax
     import jax.numpy as jnp
+
     jax.config.update("jax_enable_x64", True)
     HAS_JAX = True
 except ImportError:
@@ -32,8 +33,8 @@ except ImportError:
 from hypercomplex.core.hyper import Hyper
 from hypercomplex.core.utils import make_inputs, extract_gradient_hessian
 
-
 # ── helpers ───────────────────────────────────────────────────────────────────
+
 
 def solve_fp_real(A, b, tol=1e-15, max_iter=5000):
     """Solve z = tanh(Az + b) by fixed-point iteration."""
@@ -52,8 +53,10 @@ def solve_fp_hc(A_rows, b_hc, n, tol=1e-14, max_iter=2000):
     z = [Hyper.real(m, 0.0) for _ in range(n)]
     for _ in range(max_iter):
         z_new = [
-            (sum((A_rows[i][j] * z[j] for j in range(n)),
-                 Hyper.real(m, 0.0)) + b_hc[i]).tanh()
+            (
+                sum((A_rows[i][j] * z[j] for j in range(n)), Hyper.real(m, 0.0))
+                + b_hc[i]
+            ).tanh()
             for i in range(n)
         ]
         if max(abs(z_new[i].c[0] - z[i].c[0]) for i in range(n)) < tol:
@@ -70,13 +73,13 @@ def ift_gradient(A, b, z_star):
     dz*/dtheta from:  M dz* = ...  where M = I - diag(sech²) A
     """
     n = len(b)
-    s2  = 1.0 / np.cosh(A @ z_star + b) ** 2
-    M   = np.eye(n) - np.diag(s2) @ A
+    s2 = 1.0 / np.cosh(A @ z_star + b) ** 2
+    M = np.eye(n) - np.diag(s2) @ A
     M_i = np.linalg.inv(M)
-    D   = np.diag(s2)
+    D = np.diag(s2)
 
-    dz_dA  = np.einsum("ki,j->kij", M_i @ D, z_star)   # (n, n, n)
-    dz_db  = M_i @ D                                     # (n, n)
+    dz_dA = np.einsum("ki,j->kij", M_i @ D, z_star)  # (n, n, n)
+    dz_db = M_i @ D  # (n, n)
 
     grad = np.zeros(n * n + n)
     for i in range(n):
@@ -88,6 +91,7 @@ def ift_gradient(A, b, z_star):
 
 
 # ── main demo ─────────────────────────────────────────────────────────────────
+
 
 def run_demo(n_layer=3, seed=42, reps=5):
     print("=" * 65)
@@ -102,18 +106,17 @@ def run_demo(n_layer=3, seed=42, reps=5):
 
     # ── fixed-point solution ─────────────────────────────────────────────────
     z_star = solve_fp_real(A0, b0)
-    resid  = np.max(np.abs(np.tanh(A0 @ z_star + b0) - z_star))
+    resid = np.max(np.abs(np.tanh(A0 @ z_star + b0) - z_star))
     print(f"\nFixed-point residual: {resid:.2e}")
 
     # ── HC Hessian ───────────────────────────────────────────────────────────
     def loss_hc(X):
-        A_hc = [[X[i * n_layer + j] for j in range(n_layer)]
-                for i in range(n_layer)]
-        b_hc = [X[n_layer ** 2 + k] for k in range(n_layer)]
-        z    = solve_fp_hc(A_hc, b_hc, n_layer)
-        acc  = Hyper.real(X[0].n, 0.0)
+        A_hc = [[X[i * n_layer + j] for j in range(n_layer)] for i in range(n_layer)]
+        b_hc = [X[n_layer**2 + k] for k in range(n_layer)]
+        z = solve_fp_hc(A_hc, b_hc, n_layer)
+        acc = Hyper.real(X[0].n, 0.0)
         for zi in z:
-            acc = acc + zi ** 2
+            acc = acc + zi**2
         return acc
 
     t0 = time.perf_counter()
@@ -128,15 +131,18 @@ def run_demo(n_layer=3, seed=42, reps=5):
     grad_err = np.max(np.abs(g_hc - g_ift))
 
     print(f"\n{'Claim 1: HC gradient == IFT analytic':}")
-    print(f"  Max |g_HC - g_IFT|  = {grad_err:.2e}  "
-          f"({'PASS' if grad_err < 1e-10 else 'FAIL'})")
+    print(
+        f"  Max |g_HC - g_IFT|  = {grad_err:.2e}  "
+        f"({'PASS' if grad_err < 1e-10 else 'FAIL'})"
+    )
 
     # ── JAX comparison ────────────────────────────────────────────────────────
     if HAS_JAX:
+
         def loss_jax(Ab_flat):
             n = n_layer
-            A = Ab_flat[:n * n].reshape(n, n)
-            b = Ab_flat[n * n:]
+            A = Ab_flat[: n * n].reshape(n, n)
+            b = Ab_flat[n * n :]
             z = jnp.zeros(n)
             for _ in range(500):
                 z = jnp.tanh(A @ z + b)
@@ -159,8 +165,8 @@ def run_demo(n_layer=3, seed=42, reps=5):
         print(f"  Max |H_HC - H_JAX| = {hess_disc:.2e}")
         print(f"  HC Hessian norm    = {np.linalg.norm(H_hc):.6f}")
         print(f"  JAX Hessian norm   = {np.linalg.norm(H_jax):.6f}")
-        print(f"  Interpretation: JAX differentiates through iteration")
-        print(f"  history; HC gives the IFT-correct Hessian at z*.")
+        print("  Interpretation: JAX differentiates through iteration")
+        print("  history; HC gives the IFT-correct Hessian at z*.")
     else:
         print(f"\nHC runtime: {t_hc:.1f} ms  (one forward pass, n={n_layer})")
 

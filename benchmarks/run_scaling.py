@@ -24,6 +24,7 @@ os.makedirs("benchmarks/results", exist_ok=True)
 try:
     import jax
     import jax.numpy as jnp
+
     jax.config.update("jax_enable_x64", True)
     HAS_JAX = True
 except ImportError:
@@ -31,8 +32,8 @@ except ImportError:
     print("JAX not installed — skipping JAX column")
 
 # ── HC ───────────────────────────────────────────────────────────────────────
-from hypercomplex import hessian as hc_hessian
-from hypercomplex.core.hyper import Hyper
+from hypercomplex import hessian as hc_hessian  # noqa: E402
+from hypercomplex.core.hyper import Hyper  # noqa: E402
 
 
 def f_quad_hc(X):
@@ -52,7 +53,7 @@ def f_rosen_hc(X):
     for i in range(n - 1):
         a = X[i + 1] - X[i] ** 2
         b = X[i] - Hyper.real(X[i].n, 1.0)
-        acc = acc + a ** 2 * 100.0 + b ** 2
+        acc = acc + a**2 * 100.0 + b**2
     return acc
 
 
@@ -62,45 +63,59 @@ def fd_hessian(f, x, h=1e-5):
     H = np.zeros((n, n))
     for i in range(n):
         for j in range(i, n):
-            xpp = x.copy(); xpp[i] += h; xpp[j] += h
-            xpm = x.copy(); xpm[i] += h; xpm[j] -= h
-            xmp = x.copy(); xmp[i] -= h; xmp[j] += h
-            xmm = x.copy(); xmm[i] -= h; xmm[j] -= h
+            xpp = x.copy()
+            xpp[i] += h
+            xpp[j] += h
+            xpm = x.copy()
+            xpm[i] += h
+            xpm[j] -= h
+            xmp = x.copy()
+            xmp[i] -= h
+            xmp[j] += h
+            xmm = x.copy()
+            xmm[i] -= h
+            xmm[j] -= h
             v = (f(xpp) - f(xpm) - f(xmp) + f(xmm)) / (4 * h * h)
             H[i, j] = H[j, i] = v
     return H
 
 
 def f_quad_real(x):
-    return float(np.sum(x ** 2) + sum(x[i] * x[j]
-                                      for i in range(len(x))
-                                      for j in range(i + 1, len(x))))
+    return float(
+        np.sum(x**2)
+        + sum(x[i] * x[j] for i in range(len(x)) for j in range(i + 1, len(x)))
+    )
 
 
 def f_rosen_real(x):
-    return float(sum(100 * (x[i + 1] - x[i] ** 2) ** 2 + (x[i] - 1) ** 2
-                     for i in range(len(x) - 1)))
+    return float(
+        sum(
+            100 * (x[i + 1] - x[i] ** 2) ** 2 + (x[i] - 1) ** 2
+            for i in range(len(x) - 1)
+        )
+    )
 
 
 # ── JAX ───────────────────────────────────────────────────────────────────────
 if HAS_JAX:
+
     def f_quad_jax(x):
-        return jnp.sum(x ** 2) + jnp.sum(jnp.tril(jnp.outer(x, x), -1))
+        return jnp.sum(x**2) + jnp.sum(jnp.tril(jnp.outer(x, x), -1))
 
     def f_rosen_jax(x):
         return jnp.sum(100 * (x[1:] - x[:-1] ** 2) ** 2 + (x[:-1] - 1) ** 2)
 
-    jax_hess_quad  = jax.jit(jax.hessian(f_quad_jax))
+    jax_hess_quad = jax.jit(jax.hessian(f_quad_jax))
     jax_hess_rosen = jax.jit(jax.hessian(f_rosen_jax))
 
 # ── benchmark loop ────────────────────────────────────────────────────────────
-DIMS  = [2, 4, 8, 16, 32, 64]
-REPS  = {2: 30, 4: 20, 8: 15, 16: 10, 32: 5, 64: 3}
+DIMS = [2, 4, 8, 16, 32, 64]
+REPS = {2: 30, 4: 20, 8: 15, 16: 10, 32: 5, 64: 3}
 
 scaling_rows = []
 
 for fname, f_hc, f_real, jax_fn in [
-    ("quadratic",  f_quad_hc,  f_quad_real,  jax_hess_quad  if HAS_JAX else None),
+    ("quadratic", f_quad_hc, f_quad_real, jax_hess_quad if HAS_JAX else None),
     ("rosenbrock", f_rosen_hc, f_rosen_real, jax_hess_rosen if HAS_JAX else None),
 ]:
     print(f"\n{'=' * 60}")
@@ -132,8 +147,7 @@ for fname, f_hc, f_real, jax_fn in [
             H_fd = fd_hessian(f_real, x)
             t_fd = None
 
-        fd_err = (np.max(np.abs(H_fd - H_hc)) /
-                  (np.max(np.abs(H_hc)) + 1e-30) * 100)
+        fd_err = np.max(np.abs(H_fd - H_hc)) / (np.max(np.abs(H_hc)) + 1e-30) * 100
 
         # JAX
         if HAS_JAX:
@@ -145,17 +159,20 @@ for fname, f_hc, f_real, jax_fn in [
         else:
             t_jax = None
 
-        fd_str  = f"{t_fd:.2f}"  if t_fd  is not None else "---"
+        fd_str = f"{t_fd:.2f}" if t_fd is not None else "---"
         jax_str = f"{t_jax:.2f}" if t_jax is not None else "---"
         print(f"{n:>4}  {t_hc:>8.2f}  {fd_str:>8}  {jax_str:>8}  {fd_err:>8.4f}%")
 
-        scaling_rows.append(dict(
-            function=fname, n=n,
-            t_hc_ms=round(t_hc, 4),
-            t_fd_ms=round(t_fd, 4) if t_fd is not None else "",
-            t_jax_ms=round(t_jax, 4) if t_jax is not None else "",
-            fd_err_pct=round(fd_err, 6),
-        ))
+        scaling_rows.append(
+            dict(
+                function=fname,
+                n=n,
+                t_hc_ms=round(t_hc, 4),
+                t_fd_ms=round(t_fd, 4) if t_fd is not None else "",
+                t_jax_ms=round(t_jax, 4) if t_jax is not None else "",
+                fd_err_pct=round(fd_err, 6),
+            )
+        )
 
 with open("benchmarks/results/scaling_results.csv", "w", newline="") as f:
     w = csv.DictWriter(f, fieldnames=scaling_rows[0].keys())
@@ -169,6 +186,7 @@ print("FD step-size error sweep (nonlinear: sin·exp)")
 print(f"{'h':>10}  {'max_abs_err':>14}  {'rel_err_%':>12}")
 print("-" * 42)
 
+
 def f_nl_hc(X):
     n = len(X)
     acc = Hyper.real(n, 0.0)
@@ -176,8 +194,10 @@ def f_nl_hc(X):
         acc = acc + X[i].sin() * (X[i] ** 2 * (-0.5)).exp()
     return acc
 
+
 def f_nl_real(x):
-    return float(np.sum(np.sin(x) * np.exp(-x ** 2 / 2)))
+    return float(np.sum(np.sin(x) * np.exp(-(x**2) / 2)))
+
 
 x4 = np.array([0.5, 1.0, -0.3, 0.8])
 H_hc_nl = hc_hessian(f_nl_hc, x4)
