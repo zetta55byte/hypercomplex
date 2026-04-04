@@ -10,24 +10,15 @@ Coefficient layout for dimension n:
   [2n+1 .. 3n]     i_j * eps_j   (diagonal Hessian channels)
   [3n+1 .. end]    i_j * eps_k   (j < k, lex order, off-diagonal Hessian)
 
-Vectorization notes
--------------------
-The original __mul__ had two bottlenecks:
-  1. idx_mix(j, k) contained a Python double-loop — O(n²) per index lookup.
-  2. The i_j * eps_k accumulation used a double Python loop — O(n²) iterations.
+Backend support
+---------------
+Hyper stores an array-module reference (``xp``) alongside its coefficients.
+By default ``xp = numpy``.  Passing ``xp = jax.numpy`` routes all coefficient
+arithmetic through JAX, enabling XLA compilation of the full algebra.
 
-This version precomputes all index arrays once at init (or class-level cache),
-then __mul__ is pure NumPy slice/outer-product operations — no Python loops
-in the hot path.
-
-Off-diagonal block:
-  The n*(n-1)/2 pairs (j<k) in lex order are precomputed as two int arrays
-  _js, _ks of that length, stored on the instance.  The outer-product matrix
-
-      P[j, k] = a_i[j] * b_eps[k] + b_i[j] * a_eps[k]
-
-  is computed with a single np.outer call, then the upper-triangle entries
-  are gathered with P[_js, _ks].  One line, one BLAS call.
+The index cache (_build_index_cache) always uses NumPy because it produces
+integer index arrays — these are never differentiated through and JAX would
+gain nothing from tracing them.
 """
 
 import numpy as np
@@ -35,7 +26,7 @@ from functools import lru_cache
 
 
 # ---------------------------------------------------------------------------
-# Index-layout helpers (pure functions, cached by n)
+# Index-layout helpers (pure NumPy, cached by n)
 # ---------------------------------------------------------------------------
 
 @lru_cache(maxsize=64)
@@ -43,14 +34,12 @@ def _build_index_cache(n):
     """
     Precompute all index arrays for dimension n.
 
-    Returns a dict with:
-      sl_i     : slice  into coeff vector for i_j   block  (length n)
-      sl_eps   : slice  into coeff vector for eps_j  block  (length n)
-      sl_diag  : slice  into coeff vector for i_j*eps_j block (length n)
-      sl_off   : slice  into coeff vector for off-diag block (length n*(n-1)//2)
-      off_js   : int array, row indices j for upper-triangle pairs
-      off_ks   : int array, col indices k for upper-triangle pairs
-      size     : total coefficient vector length
+    Always uses NumPy regardless of the active backend — index arrays
+    are integer constants that never enter the differentiable computation.
+
+    Returns
+    -------
+    dict with sl_i, sl_eps, sl_diag, sl_off, off_js, off_ks, size.
     """
     n_off = n * (n - 1) // 2
     size  = 1 + n + n + n + n_off
@@ -60,7 +49,7 @@ def _build_index_cache(n):
     sl_diag = slice(1 + 2*n,   1 + 3*n)
     sl_off  = slice(1 + 3*n,   size)
 
-    js, ks = np.triu_indices(n, k=1)   # upper triangle, j < k, lex order
+    js, ks = np.triu_indices(n, k=1)
     js = js.astype(np.intp)
     ks = ks.astype(np.intp)
 
@@ -81,103 +70,119 @@ class Hyper:
     Parameters
     ----------
     coeffs : array-like
-        Coefficient vector of length Hyper.size(n).
+        Coefficient vector of length ``Hyper.size(n)``.
     n : int
         Dimension of the input space.
+    xp : module, optional
+        Array module to use for coefficient arithmetic.
+        Default: ``numpy``.  Pass ``jax.numpy`` for the JAX backend.
 
     Notes
     -----
-    Implements the commutative algebra:
-        i_j^2   = -1
-        eps_j^2 =  0
-        eps_j * eps_k = 0  (j ≠ k)
-    All units commute.
-
-    __mul__ is fully vectorized — no Python loops in the hot path.
+    Algebra rules:
+        i_j^2   = -1,   eps_j^2 = 0,   eps_j * eps_k = 0 (j ≠ k)
+    All units commute.  ``__mul__`` has no Python loops in the hot path.
     """
 
-    __slots__ = ('c', 'n', '_idx')
+    __slots__ = ('c', 'n', '_idx', '_xp')
 
-    def __init__(self, coeffs, n):
-        self.c   = np.asarray(coeffs, dtype=float)
-        self.n   = n
-        self._idx = _build_index_cache(n)   # O(1) dict lookup after first call
+    def __init__(self, coeffs, n, xp=None):
+        if xp is None:
+            xp = np
+        self._xp  = xp
+        self.n    = n
+        self._idx = _build_index_cache(n)
+        self.c    = xp.asarray(coeffs, dtype=float)
 
     # ── constructors ──────────────────────────────────────────────────────────
 
     @classmethod
-    def zero(cls, n):
-        idx  = _build_index_cache(n)
-        h    = object.__new__(cls)
-        h.c  = np.zeros(idx['size'])
-        h.n  = n
+    def zero(cls, n, xp=None):
+        if xp is None:
+            xp = np
+        idx = _build_index_cache(n)
+        h   = object.__new__(cls)
+        h._xp  = xp
+        h.n    = n
         h._idx = idx
+        h.c    = xp.zeros(idx['size'])
         return h
 
     @classmethod
-    def real(cls, n, value):
-        h = cls.zero(n)
-        h.c[0] = value
+    def real(cls, n, value, xp=None):
+        h = cls.zero(n, xp=xp)
+        # Use numpy indexing — JAX arrays support in-place via .at[].set
+        if h._xp is np:
+            h.c[0] = value
+        else:
+            h.c = h.c.at[0].set(value)
         return h
 
-    # ── index helpers (kept for backwards compatibility) ───────────────────────
-    # These are now O(1) array lookups rather than Python loops.
+    # ── index helpers (O(1), backwards compatible) ────────────────────────────
 
-    def idx_i(self, j):
-        return 1 + j
-
-    def idx_eps(self, j):
-        return 1 + self.n + j
-
-    def idx_diag_mix(self, j):
-        return 1 + self.n + self.n + j
+    def idx_i(self, j):        return 1 + j
+    def idx_eps(self, j):      return 1 + self.n + j
+    def idx_diag_mix(self, j): return 1 + self.n + self.n + j
 
     def idx_mix(self, j, k):
-        """Index of the i_j * eps_k coefficient (j < k)."""
-        # O(1): position in the upper-triangle enumeration
-        idx  = self._idx
+        idx    = self._idx
         js, ks = idx['off_js'], idx['off_ks']
-        # argwhere equivalent, but these arrays are tiny (n*(n-1)/2 entries)
         matches = np.where((js == j) & (ks == k))[0]
         if matches.size == 0:
             raise IndexError(f"Invalid mix index ({j}, {k}) for n={self.n}")
         return int(idx['sl_off'].start + matches[0])
 
-    # ── size helper ────────────────────────────────────────────────────────────
-
     @staticmethod
     def size(n):
         return _build_index_cache(n)['size']
 
+    # ── internal helpers ──────────────────────────────────────────────────────
+
+    def _new(self, coeffs):
+        """Construct a new Hyper with the same n and xp as self."""
+        return Hyper(coeffs, self.n, xp=self._xp)
+
     # ── arithmetic ────────────────────────────────────────────────────────────
 
     def __neg__(self):
-        return Hyper(-self.c, self.n)
+        return self._new(-self.c)
 
     def __add__(self, other):
         if isinstance(other, (int, float, np.floating)):
-            out = self.copy()
-            out.c[0] += other
-            return out
-        return Hyper(self.c + other.c, self.n)
+            xp = self._xp
+            if xp is np:
+                out = self.copy()
+                out.c[0] += other
+                return out
+            else:
+                return self._new(self.c.at[0].add(other))
+        return self._new(self.c + other.c)
 
     def __radd__(self, other):
         return self.__add__(other)
 
     def __sub__(self, other):
         if isinstance(other, (int, float, np.floating)):
-            out = self.copy()
-            out.c[0] -= other
-            return out
-        return Hyper(self.c - other.c, self.n)
+            xp = self._xp
+            if xp is np:
+                out = self.copy()
+                out.c[0] -= other
+                return out
+            else:
+                return self._new(self.c.at[0].add(-other))
+        return self._new(self.c - other.c)
 
     def __rsub__(self, other):
-        return Hyper(other - self.c, self.n) if isinstance(other, (int, float, np.floating)) else NotImplemented
+        if isinstance(other, (int, float, np.floating)):
+            return self._new(other - self.c)
+        return NotImplemented
 
     def __mul__(self, other):
+        xp  = self._xp
+
         # ── scalar fast-path ──────────────────────────────────────────────────
         if isinstance(other, (int, float, np.floating)):
-            return Hyper(self.c * other, self.n)
+            return self._new(self.c * other)
 
         n   = self.n
         idx = self._idx
@@ -190,111 +195,95 @@ class Hyper:
         js      = idx['off_js']
         ks      = idx['off_ks']
 
-        out = np.empty_like(a)
+        # real * anything (both ways), subtract double-counted real*real
+        out = a[0] * b + b[0] * a - a[0] * b[0] * xp.zeros_like(a).at[0].set(1.0) \
+              if xp is not np else (
+                  (lambda o: (o.__setitem__(slice(None), a[0]*b + b[0]*a),
+                              o.__setitem__(0, o[0] - a[0]*b[0]), o)[-1])(
+                      np.empty_like(a)))
 
-        # ── real * anything (both ways), subtract double-counted real*real ──
-        # This replicates:  out = a[0]*b + b[0]*a - a[0]*b[0]*e_0
-        out[:] = a[0] * b + b[0] * a
-        out[0] -= a[0] * b[0]
+        # ── cleaner implementation for both backends ──────────────────────────
+        if xp is np:
+            out = np.empty_like(a)
+            out[:] = a[0] * b + b[0] * a
+            out[0] -= a[0] * b[0]
+            out[0] -= np.dot(a[sl_i], b[sl_i])
+            a_i, b_i   = a[sl_i], b[sl_i]
+            a_eps, b_eps = a[sl_eps], b[sl_eps]
+            P = np.outer(a_i, b_eps) + np.outer(b_i, a_eps)
+            out[sl_diag] += np.diag(P)
+            out[sl_off]  += P[js, ks]
+        else:
+            # JAX: functional style using .at[].add()
+            out = a[0] * b + b[0] * a
+            out = out.at[0].add(-a[0] * b[0])
+            out = out.at[0].add(-xp.dot(a[sl_i], b[sl_i]))
+            a_i, b_i   = a[sl_i], b[sl_i]
+            a_eps, b_eps = a[sl_eps], b[sl_eps]
+            P = xp.outer(a_i, b_eps) + xp.outer(b_i, a_eps)
+            out = out.at[sl_diag].add(xp.diag(P))
+            out = out.at[sl_off].add(P[js, ks])
 
-        # ── i_j * i_j  →  -real  (vectorized over j) ──────────────────────
-        # sum of a_i[j] * b_i[j] for all j, subtracted from out[0]
-        out[0] -= np.dot(a[sl_i], b[sl_i])
-
-        # ── i_j * eps_k  →  mix channels ─────────────────────────────────
-        # P[j, k] = a_i[j]*b_eps[k] + b_i[j]*a_eps[k]
-        # One outer product per direction; gather with precomputed index arrays.
-        a_i   = a[sl_i]    # shape (n,)
-        b_i   = b[sl_i]
-        a_eps = a[sl_eps]  # shape (n,)
-        b_eps = b[sl_eps]
-
-        P = np.outer(a_i, b_eps) + np.outer(b_i, a_eps)   # shape (n, n)
-
-        # diagonal j==k → sl_diag block
-        out[sl_diag] += np.diag(P)
-
-        # upper triangle j<k → sl_off block (lex order matching triu_indices)
-        out[sl_off] += P[js, ks]
-
-        return Hyper(out, n)
+        return self._new(out)
 
     def __rmul__(self, other):
         return self.__mul__(other)
 
     def __truediv__(self, other):
         if isinstance(other, (int, float, np.floating)):
-            return Hyper(self.c / other, self.n)
+            return self._new(self.c / other)
         raise NotImplementedError("Hyper / Hyper not implemented")
 
     def __rtruediv__(self, other):
-        """
-        scalar / Hyper  via exact second-order inversion.
-
-        For h = a + delta where a is the real part:
-            1/h = 1/a - delta/a^2 + (cross terms)/a^3
-
-        Vectorized: computes all n gradient channels and all Hessian
-        channels without Python loops.
-        """
+        """scalar / Hyper via exact second-order inversion."""
         if not isinstance(other, (int, float, np.floating)):
             return NotImplemented
 
-        a_val = self.c[0]
+        a_val = float(self.c[0])
         if abs(a_val) < 1e-300:
             raise ZeroDivisionError("Hyper real part is zero")
 
+        xp  = self._xp
         n   = self.n
         idx = self._idx
-        sl_i    = idx['sl_i']
-        sl_eps  = idx['sl_eps']
-        sl_diag = idx['sl_diag']
-        sl_off  = idx['sl_off']
-        js      = idx['off_js']
-        ks      = idx['off_ks']
+        sl_i, sl_eps = idx['sl_i'], idx['sl_eps']
+        sl_diag, sl_off = idx['sl_diag'], idx['sl_off']
+        js, ks = idx['off_js'], idx['off_ks']
 
-        s   = float(other)
-        a2  = a_val * a_val
-        a3  = a2 * a_val
+        s, a2, a3 = float(other), a_val**2, a_val**3
+        c = self.c
 
-        c   = self.c
-        out = np.zeros_like(c)
+        if xp is np:
+            out = np.zeros_like(c)
+            out[0]      = s / a_val
+            out[sl_i]   = -s * c[sl_i]   / a2
+            out[sl_eps] = -s * c[sl_eps] / a2
+            ci, ceps    = c[sl_i], c[sl_eps]
+            out[sl_diag] = -s * c[sl_diag] / a2 + 2.0 * s * ci * ceps / a3
+            cross = ci[js] * ceps[ks] + ci[ks] * ceps[js]
+            out[sl_off]  = -s * c[sl_off]  / a2 + 2.0 * s * cross / a3
+        else:
+            out = xp.zeros_like(c)
+            out = out.at[0].set(s / a_val)
+            out = out.at[sl_i].set(-s * c[sl_i]   / a2)
+            out = out.at[sl_eps].set(-s * c[sl_eps] / a2)
+            ci, ceps = c[sl_i], c[sl_eps]
+            out = out.at[sl_diag].set(-s * c[sl_diag] / a2 + 2.0 * s * ci * ceps / a3)
+            cross = ci[js] * ceps[ks] + ci[ks] * ceps[js]
+            out = out.at[sl_off].set(-s * c[sl_off] / a2 + 2.0 * s * cross / a3)
 
-        # real part
-        out[0] = s / a_val
-
-        # gradient channels: -s * c_i / a²  and  -s * c_eps / a²
-        out[sl_i]   = -s * c[sl_i]   / a2
-        out[sl_eps] = -s * c[sl_eps] / a2
-
-        # diagonal Hessian channel j:
-        #   -s*c_diag[j]/a² + 2s*c_i[j]*c_eps[j]/a³
-        ci   = c[sl_i]
-        ceps = c[sl_eps]
-        cd   = c[sl_diag]
-
-        out[sl_diag] = -s * cd / a2 + 2.0 * s * ci * ceps / a3
-
-        # off-diagonal Hessian channel (j, k):
-        #   -s*c_off[p]/a² + 2s*(c_i[j]*c_eps[k] + c_i[k]*c_eps[j])/a³
-        c_off = c[sl_off]
-        cross = ci[js] * ceps[ks] + ci[ks] * ceps[js]
-        out[sl_off] = -s * c_off / a2 + 2.0 * s * cross / a3
-
-        return Hyper(out, n)
+        return self._new(out)
 
     def __pow__(self, power):
-        """Integer powers via repeated squaring (exact, no loops for small p)."""
+        """Integer powers via binary exponentiation."""
         if not isinstance(power, int) or power < 0:
             raise NotImplementedError("Only non-negative integer powers supported")
         if power == 0:
-            return Hyper.real(self.n, 1.0)
+            return Hyper.real(self.n, 1.0, xp=self._xp)
         if power == 1:
             return self.copy()
-        # binary exponentiation
-        result = Hyper.real(self.n, 1.0)
-        base   = self.copy()
-        exp    = power
+        result = Hyper.real(self.n, 1.0, xp=self._xp)
+        base, exp = self.copy(), power
         while exp:
             if exp & 1:
                 result = result * base
@@ -305,92 +294,91 @@ class Hyper:
     # ── copy / repr ───────────────────────────────────────────────────────────
 
     def copy(self):
-        return Hyper(self.c.copy(), self.n)
+        xp = self._xp
+        c  = xp.array(self.c) if xp is not np else self.c.copy()
+        return Hyper(c, self.n, xp=xp)
 
     def __repr__(self):
-        return f"Hyper(real={self.c[0]:.6g}, n={self.n})"
+        return f"Hyper(real={float(self.c[0]):.6g}, n={self.n})"
 
-    # ── mathematical functions ─────────────────────────────────────────────────
-    # All follow the same pattern:
-    #   f(a + δ) ≈ f(a) + f'(a)δ + ½f''(a)δ²
-    # where δ is the perturbation encoded in the non-real coefficients.
-    # Because eps² = 0 and i²= -1, the second-order algebra truncates exactly.
-    #
-    # Vectorized: compute f(a), f'(a), f''(a) once, then scale coefficient
-    # blocks — no Python loops.
+    # ── unary mathematical functions ──────────────────────────────────────────
 
     def _apply_scalar_func(self, f0, f1, f2):
         """
-        Return f(self) where f0=f(a), f1=f'(a), f2=f''(a) at real part a.
+        Apply a scalar function chain-rule expansion.
 
-        Layout (all vectorized):
-          real     → f0
-          i_j      → f1 * c_i[j]
-          eps_j    → f1 * c_eps[j]
-          diag_mix → f1 * c_diag[j] + f2 * c_i[j] * c_eps[j]
-          off_mix  → f1 * c_off[p]  + f2 * (c_i[j]*c_eps[k] + c_i[k]*c_eps[j])
+        f(a + δ) = f(a) + f'(a)δ + ½f''(a)δ²  (exact in this algebra)
+
+        Parameters
+        ----------
+        f0, f1, f2 : float
+            f(a), f'(a), f''(a) at the real part a = self.c[0].
         """
-        idx     = self._idx
-        sl_i    = idx['sl_i']
-        sl_eps  = idx['sl_eps']
-        sl_diag = idx['sl_diag']
-        sl_off  = idx['sl_off']
-        js      = idx['off_js']
-        ks      = idx['off_ks']
-        c       = self.c
+        xp  = self._xp
+        idx = self._idx
+        sl_i, sl_eps = idx['sl_i'], idx['sl_eps']
+        sl_diag, sl_off = idx['sl_diag'], idx['sl_off']
+        js, ks = idx['off_js'], idx['off_ks']
+        c = self.c
 
-        out = np.empty_like(c)
-        out[0]       = f0
-        out[sl_i]    = f1 * c[sl_i]
-        out[sl_eps]  = f1 * c[sl_eps]
+        if xp is np:
+            out = np.empty_like(c)
+            out[0]      = f0
+            out[sl_i]   = f1 * c[sl_i]
+            out[sl_eps] = f1 * c[sl_eps]
+            ci, ceps    = c[sl_i], c[sl_eps]
+            out[sl_diag] = f1 * c[sl_diag] + f2 * ci * ceps
+            out[sl_off]  = (f1 * c[sl_off]
+                            + f2 * (ci[js] * ceps[ks] + ci[ks] * ceps[js]))
+        else:
+            out = xp.zeros_like(c)
+            out = out.at[0].set(f0)
+            out = out.at[sl_i].set(f1 * c[sl_i])
+            out = out.at[sl_eps].set(f1 * c[sl_eps])
+            ci, ceps = c[sl_i], c[sl_eps]
+            out = out.at[sl_diag].set(f1 * c[sl_diag] + f2 * ci * ceps)
+            out = out.at[sl_off].set(
+                f1 * c[sl_off] + f2 * (ci[js] * ceps[ks] + ci[ks] * ceps[js])
+            )
 
-        ci   = c[sl_i]
-        ceps = c[sl_eps]
-
-        out[sl_diag] = f1 * c[sl_diag] + f2 * ci * ceps
-        out[sl_off]  = (f1 * c[sl_off]
-                        + f2 * (ci[js] * ceps[ks] + ci[ks] * ceps[js]))
-        return Hyper(out, self.n)
+        return self._new(out)
 
     def exp(self):
-        a  = self.c[0]
-        ea = np.exp(a)
+        xp = self._xp; a = float(self.c[0]); ea = float(xp.exp(xp.array(a)))
         return self._apply_scalar_func(ea, ea, ea)
 
     def log(self):
-        a = self.c[0]
-        return self._apply_scalar_func(np.log(a), 1.0/a, -1.0/a**2)
+        a = float(self.c[0])
+        return self._apply_scalar_func(float(np.log(a)), 1.0/a, -1.0/a**2)
 
     def sin(self):
-        a = self.c[0]
-        return self._apply_scalar_func(np.sin(a), np.cos(a), -np.sin(a))
+        a = float(self.c[0])
+        return self._apply_scalar_func(float(np.sin(a)), float(np.cos(a)), -float(np.sin(a)))
 
     def cos(self):
-        a = self.c[0]
-        return self._apply_scalar_func(np.cos(a), -np.sin(a), -np.cos(a))
+        a = float(self.c[0])
+        return self._apply_scalar_func(float(np.cos(a)), -float(np.sin(a)), -float(np.cos(a)))
 
     def tanh(self):
-        a  = self.c[0]
-        t  = np.tanh(a)
-        s  = 1.0 - t*t          # sech²(a)  = f'
-        s2 = -2.0 * t * s       # -2 tanh sech² = f''
+        a  = float(self.c[0])
+        t  = float(np.tanh(a))
+        s  = 1.0 - t*t
+        s2 = -2.0 * t * s
         return self._apply_scalar_func(t, s, s2)
 
     def sigmoid(self):
-        a  = self.c[0]
+        a  = float(self.c[0])
         sg = 1.0 / (1.0 + np.exp(-a))
         f1 = sg * (1.0 - sg)
         f2 = f1 * (1.0 - 2.0 * sg)
         return self._apply_scalar_func(sg, f1, f2)
 
     def sqrt(self):
-        a  = self.c[0]
-        sq = np.sqrt(a)
-        return self._apply_scalar_func(sq, 0.5/sq, -0.25/a**1.5)
+        a = float(self.c[0])
+        return self._apply_scalar_func(float(np.sqrt(a)), 0.5/np.sqrt(a), -0.25/a**1.5)
 
     def abs(self):
-        a = self.c[0]
+        a = float(self.c[0])
         if a == 0.0:
             raise ZeroDivisionError("|Hyper| undefined at real part zero")
-        sgn = np.sign(a)
-        return self._apply_scalar_func(abs(a), sgn, 0.0)
+        return self._apply_scalar_func(abs(a), float(np.sign(a)), 0.0)
