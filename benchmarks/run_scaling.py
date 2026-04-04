@@ -82,17 +82,13 @@ def fd_hessian(f, x, h=1e-5):
 
 def f_quad_real(x):
     return float(
-        np.sum(x**2)
-        + sum(x[i] * x[j] for i in range(len(x)) for j in range(i + 1, len(x)))
+        np.sum(x**2) + sum(x[i] * x[j] for i in range(len(x)) for j in range(i + 1, len(x)))
     )
 
 
 def f_rosen_real(x):
     return float(
-        sum(
-            100 * (x[i + 1] - x[i] ** 2) ** 2 + (x[i] - 1) ** 2
-            for i in range(len(x) - 1)
-        )
+        sum(100 * (x[i + 1] - x[i] ** 2) ** 2 + (x[i] - 1) ** 2 for i in range(len(x) - 1))
     )
 
 

@@ -149,9 +149,7 @@ def basin_map(f_ode, xs, ys, t_end=50, tol=1e-8):
 
     for i, y0 in enumerate(ys):
         for j, x0 in enumerate(xs):
-            sol = solve_ivp(
-                rhs, [0, t_end], [x0, y0], method="RK45", rtol=tol, atol=tol
-            )
+            sol = solve_ivp(rhs, [0, t_end], [x0, y0], method="RK45", rtol=tol, atol=tol)
             yf = sol.y[:, -1]
             result[i, j] = 1 if yf[0] > yf[1] else 0
     return result

@@ -88,9 +88,7 @@ _plot_runtime(axes[1], "rosenbrock", "Rosenbrock — runtime vs n")
 
 # ── Panel 3: FD step-size error ───────────────────────────────────────────────
 ax = axes[2]
-ax.semilogx(
-    fd_hs, fd_errs, "o-", color=ORANGE, lw=2, ms=8, label="FD relative error  (%)"
-)
+ax.semilogx(fd_hs, fd_errs, "o-", color=ORANGE, lw=2, ms=8, label="FD relative error  (%)")
 ax.axhline(0.0, color=BLUE, lw=1.8, ls="--", label="HC  (machine precision, 4×10⁻¹⁶)")
 ax.axvspan(1e-5, 8e-9, alpha=0.10, color="red", label="Cancellation regime")
 ax.axvspan(2e-1, 8e-3, alpha=0.10, color="gold", label="Truncation regime")

@@ -53,10 +53,7 @@ def solve_fp_hc(A_rows, b_hc, n, tol=1e-14, max_iter=2000):
     z = [Hyper.real(m, 0.0) for _ in range(n)]
     for _ in range(max_iter):
         z_new = [
-            (
-                sum((A_rows[i][j] * z[j] for j in range(n)), Hyper.real(m, 0.0))
-                + b_hc[i]
-            ).tanh()
+            (sum((A_rows[i][j] * z[j] for j in range(n)), Hyper.real(m, 0.0)) + b_hc[i]).tanh()
             for i in range(n)
         ]
         if max(abs(z_new[i].c[0] - z[i].c[0]) for i in range(n)) < tol:
@@ -131,10 +128,7 @@ def run_demo(n_layer=3, seed=42, reps=5):
     grad_err = np.max(np.abs(g_hc - g_ift))
 
     print(f"\n{'Claim 1: HC gradient == IFT analytic':}")
-    print(
-        f"  Max |g_HC - g_IFT|  = {grad_err:.2e}  "
-        f"({'PASS' if grad_err < 1e-10 else 'FAIL'})"
-    )
+    print(f"  Max |g_HC - g_IFT|  = {grad_err:.2e}  " f"({'PASS' if grad_err < 1e-10 else 'FAIL'})")
 
     # ── JAX comparison ────────────────────────────────────────────────────────
     if HAS_JAX:

@@ -353,9 +353,7 @@ class Hyper:
             out = out.at[sl_eps].set(f1 * c[sl_eps])
             ci, ceps = c[sl_i], c[sl_eps]
             out = out.at[sl_diag].set(f1 * c[sl_diag] + f2 * ci * ceps)
-            out = out.at[sl_off].set(
-                f1 * c[sl_off] + f2 * (ci[js] * ceps[ks] + ci[ks] * ceps[js])
-            )
+            out = out.at[sl_off].set(f1 * c[sl_off] + f2 * (ci[js] * ceps[ks] + ci[ks] * ceps[js]))
 
         return self._new(out)
 
@@ -371,15 +369,11 @@ class Hyper:
 
     def sin(self):
         a = float(self.c[0])
-        return self._apply_scalar_func(
-            float(np.sin(a)), float(np.cos(a)), -float(np.sin(a))
-        )
+        return self._apply_scalar_func(float(np.sin(a)), float(np.cos(a)), -float(np.sin(a)))
 
     def cos(self):
         a = float(self.c[0])
-        return self._apply_scalar_func(
-            float(np.cos(a)), -float(np.sin(a)), -float(np.cos(a))
-        )
+        return self._apply_scalar_func(float(np.cos(a)), -float(np.sin(a)), -float(np.cos(a)))
 
     def tanh(self):
         a = float(self.c[0])
@@ -397,9 +391,7 @@ class Hyper:
 
     def sqrt(self):
         a = float(self.c[0])
-        return self._apply_scalar_func(
-            float(np.sqrt(a)), 0.5 / np.sqrt(a), -0.25 / a**1.5
-        )
+        return self._apply_scalar_func(float(np.sqrt(a)), 0.5 / np.sqrt(a), -0.25 / a**1.5)
 
     def abs(self):
         a = float(self.c[0])

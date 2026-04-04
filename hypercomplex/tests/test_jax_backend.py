@@ -82,9 +82,7 @@ class TestJAXvsNumPy:
     def test_grad_matches_numpy(self, x, f):
         g_np = grad(f, x, backend="numpy")
         g_jx = grad(f, x, backend="jax")
-        assert np.allclose(
-            g_np, g_jx, atol=1e-12
-        ), f"grad mismatch: numpy={g_np} jax={g_jx}"
+        assert np.allclose(g_np, g_jx, atol=1e-12), f"grad mismatch: numpy={g_np} jax={g_jx}"
 
     @pytest.mark.parametrize(
         "x,f",
@@ -185,9 +183,7 @@ class TestHyperJAX:
             h_jx = Hyper.real(2, 0.7, xp=jnp)
             r_np = getattr(h_np, method)()
             r_jx = getattr(h_jx, method)()
-            assert np.allclose(
-                np.array(r_jx.c), r_np.c, atol=1e-12
-            ), f"{method} mismatch"
+            assert np.allclose(np.array(r_jx.c), r_np.c, atol=1e-12), f"{method} mismatch"
 
 
 # ── jit=False path ────────────────────────────────────────────────────────────

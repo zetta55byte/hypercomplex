@@ -25,6 +25,7 @@ Usage:
 import numpy as np
 import os
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -36,20 +37,22 @@ os.makedirs("examples/figures", exist_ok=True)
 
 # ── objective ────────────────────────────────────────────────────────────────
 
+
 def f_real(x):
     """Modified Rosenbrock (b=10): f(x) = (1-x0)² + 10*(x1-x0²)²"""
-    return float((1.0 - x[0])**2 + 10.0 * (x[1] - x[0]**2)**2)
+    return float((1.0 - x[0]) ** 2 + 10.0 * (x[1] - x[0] ** 2) ** 2)
 
 
 def f_hc(X):
     """Modified Rosenbrock in hypercomplex arithmetic."""
     one = Hyper.real(X[0].n, 1.0)
     a = one - X[0]
-    b = X[1] - X[0]**2
+    b = X[1] - X[0] ** 2
     return a**2 + b**2 * 10.0
 
 
 # ── Hessian sources ───────────────────────────────────────────────────────────
+
 
 def grad_hess_exact(x):
     """Exact gradient and Hessian via hypercomplex perturbation."""
@@ -63,14 +66,14 @@ def grad_hess_fd(x, h=1e-5):
     H = np.zeros((n, n))
     e = np.eye(n)
     for i in range(n):
-        g[i] = (f_real(x + h*e[i]) - f_real(x - h*e[i])) / (2*h)
+        g[i] = (f_real(x + h * e[i]) - f_real(x - h * e[i])) / (2 * h)
         for j in range(n):
             H[i, j] = (
-                f_real(x + h*e[i] + h*e[j])
-              - f_real(x + h*e[i] - h*e[j])
-              - f_real(x - h*e[i] + h*e[j])
-              + f_real(x - h*e[i] - h*e[j])
-            ) / (4*h*h)
+                f_real(x + h * e[i] + h * e[j])
+                - f_real(x + h * e[i] - h * e[j])
+                - f_real(x - h * e[i] + h * e[j])
+                + f_real(x - h * e[i] - h * e[j])
+            ) / (4 * h * h)
     return g, H
 
 
@@ -80,11 +83,12 @@ def grad_hess_diag(x, h=1e-5):
     g = np.zeros(n)
     e = np.eye(n)
     for i in range(n):
-        g[i] = (f_real(x + h*e[i]) - f_real(x - h*e[i])) / (2*h)
+        g[i] = (f_real(x + h * e[i]) - f_real(x - h * e[i])) / (2 * h)
     return g, np.eye(n)
 
 
 # ── trust-region step ─────────────────────────────────────────────────────────
+
 
 def trust_region_step(g, H, delta):
     """
@@ -110,6 +114,7 @@ def trust_region_step(g, H, delta):
 
 # ── solver ────────────────────────────────────────────────────────────────────
 
+
 def solve(x0, grad_hess_fn, delta0=1.0, eta=0.15, max_iter=150):
     """
     Trust-region solver with standard radius update rules.
@@ -133,7 +138,7 @@ def solve(x0, grad_hess_fn, delta0=1.0, eta=0.15, max_iter=150):
 
         pred = float(-(g @ p + 0.5 * p @ (H @ p)))
         ared = f_real(x) - f_real(x + p)
-        rho  = ared / pred if abs(pred) > 1e-15 else 0.0
+        rho = ared / pred if abs(pred) > 1e-15 else 0.0
 
         accepted = rho > eta
         if accepted:
@@ -146,13 +151,13 @@ def solve(x0, grad_hess_fn, delta0=1.0, eta=0.15, max_iter=150):
             delta = min(2.0 * delta, 10.0)
 
         traj.append(x.copy())
-        diags.append(dict(rho=rho, delta=delta, accepted=accepted,
-                          gnorm=np.linalg.norm(g)))
+        diags.append(dict(rho=rho, delta=delta, accepted=accepted, gnorm=np.linalg.norm(g)))
 
     return np.array(traj), diags
 
 
 # ── figure ────────────────────────────────────────────────────────────────────
+
 
 def plot_results(trajs, diags_list, labels, colors):
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
@@ -163,13 +168,21 @@ def plot_results(trajs, diags_list, labels, colors):
     xs = np.linspace(-1.5, 1.3, 400)
     ys = np.linspace(-0.3, 1.8, 400)
     X, Y = np.meshgrid(xs, ys)
-    Z = (1 - X)**2 + 10*(Y - X**2)**2
+    Z = (1 - X) ** 2 + 10 * (Y - X**2) ** 2
     ax.contour(X, Y, np.log1p(Z), levels=25, cmap="gray", alpha=0.5, linewidths=0.6)
     ax.plot(1.0, 1.0, "*", ms=14, color="gold", zorder=5, label="Optimum (1,1)")
 
     for traj, label, color in zip(trajs, labels, colors):
-        ax.plot(traj[:, 0], traj[:, 1], "o-", color=color,
-                ms=3, lw=1.5, label=label, alpha=0.9)
+        ax.plot(
+            traj[:, 0],
+            traj[:, 1],
+            "o-",
+            color=color,
+            ms=3,
+            lw=1.5,
+            label=label,
+            alpha=0.9,
+        )
         ax.plot(traj[0, 0], traj[0, 1], "s", color=color, ms=7, zorder=4)
 
     ax.set_xlabel("x₀", fontsize=11)
@@ -190,18 +203,17 @@ def plot_results(trajs, diags_list, labels, colors):
     ax.set_title("Convergence", fontsize=12, fontweight="bold")
     ax.legend(fontsize=9, framealpha=0.9)
     ax.grid(True, which="both", alpha=0.3)
-    ax.set_xlim(0, 50)   # zoom to first 50 iters where exact/FD are interesting
+    ax.set_xlim(0, 50)  # zoom to first 50 iters where exact/FD are interesting
 
     # Panel 3: radius + rejections
     ax = axes[2]
     for diags, label, color in zip(diags_list, labels, colors):
-        deltas   = [d["delta"]    for d in diags]
+        deltas = [d["delta"] for d in diags]
         accepted = [d["accepted"] for d in diags]
-        iters    = list(range(len(deltas)))
+        iters = list(range(len(deltas)))
         ax.plot(iters, deltas, "-", color=color, lw=1.5, label=label)
         rej = [i for i, a in enumerate(accepted) if not a]
-        ax.scatter(rej, [deltas[i] for i in rej],
-                   marker="x", color=color, s=50, zorder=4)
+        ax.scatter(rej, [deltas[i] for i in rej], marker="x", color=color, s=50, zorder=4)
 
     ax.set_xlabel("Iteration", fontsize=11)
     ax.set_ylabel("Trust-region radius δ", fontsize=11)
@@ -220,18 +232,23 @@ def plot_results(trajs, diags_list, labels, colors):
 
 # ── summary ───────────────────────────────────────────────────────────────────
 
+
 def print_summary(trajs, diags_list, labels):
-    print(f"\n{'Method':<22}  {'Iters':>6}  {'Accepted':>9}  {'Rejected':>9}  "
-          f"{'Final f':>10}  {'Final |g|':>10}")
+    print(
+        f"\n{'Method':<22}  {'Iters':>6}  {'Accepted':>9}  {'Rejected':>9}  "
+        f"{'Final f':>10}  {'Final |g|':>10}"
+    )
     print("-" * 75)
     for traj, diags, label in zip(trajs, diags_list, labels):
-        n_iter   = len(traj) - 1
+        n_iter = len(traj) - 1
         n_accept = sum(d["accepted"] for d in diags)
         n_reject = n_iter - n_accept
-        final_f  = f_real(traj[-1])
-        final_g  = diags[-1]["gnorm"] if diags else float("nan")
-        print(f"{label:<22}  {n_iter:>6}  {n_accept:>9}  {n_reject:>9}  "
-              f"{final_f:>10.2e}  {final_g:>10.2e}")
+        final_f = f_real(traj[-1])
+        final_g = diags[-1]["gnorm"] if diags else float("nan")
+        print(
+            f"{label:<22}  {n_iter:>6}  {n_accept:>9}  {n_reject:>9}  "
+            f"{final_f:>10.2e}  {final_g:>10.2e}"
+        )
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
@@ -241,13 +258,13 @@ if __name__ == "__main__":
 
     print("Running trust-region solvers on modified Rosenbrock (b=10)...")
     traj_exact, diags_exact = solve(x0, grad_hess_exact)
-    traj_fd,    diags_fd    = solve(x0, grad_hess_fd)
-    traj_diag,  diags_diag  = solve(x0, grad_hess_diag)
+    traj_fd, diags_fd = solve(x0, grad_hess_fd)
+    traj_diag, diags_diag = solve(x0, grad_hess_diag)
 
     labels = ["Exact (hcderiv)", "Finite Differences", "Diagonal"]
     colors = ["#1f77b4", "#d62728", "#2ca02c"]
-    trajs  = [traj_exact, traj_fd, traj_diag]
-    diags  = [diags_exact, diags_fd, diags_diag]
+    trajs = [traj_exact, traj_fd, traj_diag]
+    diags = [diags_exact, diags_fd, diags_diag]
 
     print_summary(trajs, diags, labels)
     plot_results(trajs, diags, labels, colors)

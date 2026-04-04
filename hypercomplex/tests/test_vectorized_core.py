@@ -57,10 +57,7 @@ def ref_mul(a: Hyper, b: Hyper) -> Hyper:
         out.c[0] -= a.c[a.idx_i(j)] * b.c[b.idx_i(j)]
     for j in range(n):
         for k in range(n):
-            contrib = (
-                a.c[a.idx_i(j)] * b.c[b.idx_eps(k)]
-                + b.c[b.idx_i(j)] * a.c[a.idx_eps(k)]
-            )
+            contrib = a.c[a.idx_i(j)] * b.c[b.idx_eps(k)] + b.c[b.idx_i(j)] * a.c[a.idx_eps(k)]
             if j == k:
                 out.c[out.idx_diag_mix(j)] += contrib
             elif j < k:
@@ -261,9 +258,7 @@ class TestUnaryOps:
         result = func_hc(h)
         # expected: f0 at real part, f1 in gradient channel, f2 in Hessian
         assert abs(result.c[0] - f0_fn(a_val)) < 1e-12, "real part wrong"
-        assert abs(result.c[result.idx_i(0)] - f1_fn(a_val) * alpha) < 1e-12 * abs(
-            f1_fn(a_val)
-        )
+        assert abs(result.c[result.idx_i(0)] - f1_fn(a_val) * alpha) < 1e-12 * abs(f1_fn(a_val))
 
     def test_exp(self):
         import math
@@ -273,9 +268,7 @@ class TestUnaryOps:
     def test_sin(self):
         import math
 
-        self._check_unary(
-            lambda h: h.sin(), math.sin, math.cos, lambda a: -math.sin(a), 0.5
-        )
+        self._check_unary(lambda h: h.sin(), math.sin, math.cos, lambda a: -math.sin(a), 0.5)
 
     def test_cos(self):
         import math
@@ -307,9 +300,7 @@ class TestUnaryOps:
             s = sg(a)
             return s * (1 - s)
 
-        self._check_unary(
-            lambda h: h.sigmoid(), sg, dsg, lambda a: dsg(a) * (1 - 2 * sg(a)), 0.4
-        )
+        self._check_unary(lambda h: h.sigmoid(), sg, dsg, lambda a: dsg(a) * (1 - 2 * sg(a)), 0.4)
 
     def test_sqrt(self):
         import math
@@ -387,10 +378,7 @@ class TestExactInversion:
             for j in range(n):
                 for k in range(j + 1, n):
                     c_off = c[h.idx_mix(j, k)]
-                    cross = (
-                        c[h.idx_i(j)] * c[h.idx_eps(k)]
-                        + c[h.idx_i(k)] * c[h.idx_eps(j)]
-                    )
+                    cross = c[h.idx_i(j)] * c[h.idx_eps(k)] + c[h.idx_i(k)] * c[h.idx_eps(j)]
                     ref.c[ref.idx_mix(j, k)] = -s * c_off / a2 + 2 * s * cross / a3
 
             assert np.allclose(vec.c, ref.c, atol=1e-12), f"rtruediv mismatch for n={n}"
