@@ -28,7 +28,7 @@ array([[2., 0.],
 from __future__ import annotations
 import numpy as np
 from ..core.utils import make_inputs, extract_gradient_hessian
-from ..backends import get_backend, is_xla
+from ..backends import get_backend
 
 # ---------------------------------------------------------------------------
 # Internal: JIT wrapper
