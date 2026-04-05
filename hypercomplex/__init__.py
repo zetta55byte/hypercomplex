@@ -44,7 +44,7 @@ from .curvature import (
     shape_operator,
 )
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __author__ = "Zetta Byte"
 
 __all__ = [

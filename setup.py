@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="hcderiv",
-    version="0.3.0",
+    version="0.4.0",
     author="Zetta Byte",
     description="Exact derivatives via hypercomplex perturbation algebra",
     long_description=open("README.md").read(),
