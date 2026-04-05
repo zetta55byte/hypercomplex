@@ -33,6 +33,19 @@ Output always plain NumPy regardless of backend.
 
 **Tests:** 80/80 pass (59 NumPy + 21 JAX). JAX tests skip if JAX not installed.
 
+
+## Ecosystem
+
+| Project | Description |
+|---|---|
+| **hcderiv** | This library — exact one-pass gradients and Hessians |
+| [constitutional-os](https://github.com/zetta55byte/constitutional-os) | Formal governance runtime for AI systems |
+| [governed-research-lab-v2](https://github.com/zetta55byte/governed-research-lab-v2) | Multi-agent research system with curvature-aware governance via hcderiv |
+
+**GRL v2 integration:** `CurvatureEngine` in GRL v2 uses hcderiv to compute exact Hessians
+of the Lyapunov potential V(t) = α·c + β·u + γ·d, gating delta commits based on eigenvalue bounds.
+See [`backend/core/curvature.py`](https://github.com/zetta55byte/governed-research-lab-v2/blob/main/backend/core/curvature.py).
+
 ## What's new in v0.2.0
 
 **Vectorized hypercomplex core — up to 1000× faster per multiply.**
