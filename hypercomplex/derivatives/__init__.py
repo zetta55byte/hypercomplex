@@ -6,7 +6,8 @@ Exact derivative extraction via hypercomplex perturbation.
 All public functions accept a ``backend`` keyword argument:
 
     backend="numpy"  (default) — pure NumPy, no extra dependencies
-    backend="jax"              — JAX/XLA, requires ``pip install 'hcderiv[jax]'``
+    backend="jax"     — JAX backend (Python Hyper dispatch)
+    backend="jax-xla" — XLA backend: coefficient-level JAX arrays, jax.jit traceable
 
 When ``backend="jax"`` and ``jit=True`` (default), the hypercomplex
 evaluation is wrapped in ``jax.jit`` for XLA compilation.
@@ -17,14 +18,17 @@ Examples
 >>> def f(X): return X[0]**2 + X[1]**2
 >>> grad(f, [1.0, 2.0])                         # NumPy
 array([2., 4.])
->>> grad(f, [1.0, 2.0], backend="jax")           # JAX
+>>> grad(f, [1.0, 2.0], backend="jax")            # JAX
 array([2., 4.], dtype=float64)
+>>> hessian(f, [1.0, 2.0], backend="jax-xla")      # XLA (v0.4.0)
+array([[2., 0.],
+       [0., 2.]])
 """
 
 from __future__ import annotations
 import numpy as np
 from ..core.utils import make_inputs, extract_gradient_hessian
-from ..backends import get_backend
+from ..backends import get_backend, is_xla
 
 # ---------------------------------------------------------------------------
 # Internal: JIT wrapper
