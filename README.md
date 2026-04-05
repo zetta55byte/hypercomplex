@@ -1,38 +1,122 @@
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19394700.svg)](https://doi.org/10.5281/zenodo.19394700)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19389522.svg)](https://doi.org/10.5281/zenodo.19389522)
+[![CI](https://github.com/zetta55byte/hypercomplex/actions/workflows/ci.yml/badge.svg)](https://github.com/zetta55byte/hypercomplex/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/zetta55byte/hypercomplex/branch/main/graph/badge.svg)](https://codecov.io/gh/zetta55byte/hypercomplex)
+[![PyPI](https://img.shields.io/pypi/v/hcderiv)](https://pypi.org/project/hcderiv/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19420834.svg)](https://doi.org/10.5281/zenodo.19420834)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19394700.svg)](https://doi.org/10.5281/zenodo.19394700)
 
-# hypercomplex
+# hcderiv
 
-**Exact derivatives via hypercomplex perturbation algebra.**
+**Exact gradients and Hessians in one forward pass — no finite differences, no graph tracing, no step-size tuning.**
 
-One-pass extraction of exact gradients, Hessians, and ridge curvature —
-no finite differences, no graph tracing, no step-size tuning.
+Uses hypercomplex perturbation algebra: augment each input with a pair of commuting
+infinitesimal units, evaluate the function once, extract gradient and full Hessian
+from the coefficient channels. Exact to machine precision.
 
 ---
 
+## Install
 
-## What's new in v0.3.0
-
-**JAX backend — drop-in, zero API changes.**
-
-```python
-pip install "hcderiv[jax]"
-
-H = hessian(f, x)                   # NumPy (unchanged)
-H = hessian(f, x, backend="jax")    # JAX — same result, XLA-ready
+```bash
+pip install hcderiv                 # NumPy backend (default)
+pip install "hcderiv[jax]"          # + JAX backend
 ```
 
-All public functions accept `backend="numpy"` (default) or `backend="jax"`:
-`grad`, `hessian`, `grad_and_hessian`, `jacobian`, `hessian_vector_product`.
+---
 
-**Architecture:** backend registry (`hypercomplex/backends/`), backend-aware
-`Hyper` class with functional JAX ops (`.at[].set()`), index cache stays NumPy.
-Output always plain NumPy regardless of backend.
+## Quickstart
 
-**Tests:** 80/80 pass (59 NumPy + 21 JAX). JAX tests skip if JAX not installed.
+```python
+from hypercomplex import grad, hessian, grad_and_hessian
+from hypercomplex.core.hyper import Hyper
 
+def f(X):
+    return X[0]**2 + X[0]*X[1]*3 + X[1]**2*2
+
+g = grad(f, [1.0, 2.0])          # array([8., 11.])
+H = hessian(f, [1.0, 2.0])       # array([[2., 3.], [3., 4.]])
+```
+
+Works with transcendental functions too:
+
+```python
+def f(X):
+    return X[0].sin() * X[1].exp() + X[2].tanh()
+
+H = hessian(f, [0.5, 1.0, -0.3])  # exact, one pass
+```
+
+---
+
+## JAX Backend
+
+```bash
+pip install "hcderiv[jax]"
+```
+
+```python
+import jax
+jax.config.update("jax_enable_x64", True)
+
+from hypercomplex import hessian
+
+def f(X):
+    return X[0]**2 + X[0]*X[1]*3 + X[1]**2*2
+
+# Drop-in: same function, same result, JAX arrays
+H = hessian(f, [1.0, 2.0], backend="jax")   # array([[2., 3.], [3., 4.]])
+```
+
+All public functions accept `backend=`:
+
+```python
+from hypercomplex import grad, hessian, grad_and_hessian, jacobian
+
+grad(f, x, backend="numpy")          # default
+grad(f, x, backend="jax")            # JAX arrays through the full algebra
+hessian(f, x, backend="jax")
+grad_and_hessian(f, x, backend="jax")
+```
+
+Output is always plain NumPy regardless of backend.
+
+---
+
+## Backend Selection
+
+| Backend | Speed | Use when |
+|---|---|---|
+| `"numpy"` (default) | Fast — 0.35 ms at d=3, 28 ms at d=64 | Scientific computing, optimization loops, production |
+| `"jax"` | Slower (Python dispatch) | JAX pipelines, differentiable programming, composability |
+
+**Benchmark** (v0.3.0, d ∈ {3, 8, 16, 32, 64}, 50 reps, fixed seed):
+
+| d | NumPy (ms) | JAX eager (ms) |
+|---|---|---|
+| 3  | 0.35  | 74  |
+| 8  | 0.96  | 207 |
+| 16 | 2.4   | 435 |
+| 32 | 6.6   | 967 |
+| 64 | 28    | 3228 |
+
+NumPy is the recommended backend for performance. JAX exists for composability
+with JAX pipelines; a coefficient-level XLA backend is future work.
+
+---
+
+## Examples
+
+**Trust-region optimization** (`examples/trust_region.py`):
+Exact and FD Hessians converge in 16 iterations on modified Rosenbrock.
+Diagonal baseline stalls at f=6.2e-3 after 150 iterations.
+
+**Implicit fixed-point layers** (`examples/implicit_layer_demo.py`):
+Recovers IFT-correct Hessian for z* = tanh(Az* + b). JAX unrolled AD gives
+an iteration-dependent result. hcderiv is 27–403× faster for n=3–8.
+
+**Differentiable physics** (`examples/pendulum_energy.py`):
+Exact Hessian of pendulum energy E(θ, ω) = ½mL²ω² + mgL(1−cos θ).
+
+---
 
 ## Ecosystem
 
