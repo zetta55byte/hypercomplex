@@ -99,7 +99,7 @@ def main() -> None:
 
         # Exact energy and gradient
         E = 0.5 * M * L**2 * omega**2 + M * G * L * (1.0 - np.cos(theta))
-        g = grad(pendulum_energy, x)
+        H = hessian(pendulum_energy, x)  # also: grad(pendulum_energy, x)
         H = hessian(pendulum_energy, x)
         H_analytic = analytic_hessian(theta, omega)
         error = np.max(np.abs(H - H_analytic))
