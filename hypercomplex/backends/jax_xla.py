@@ -241,9 +241,6 @@ class JAXHyperArray:
 
         # Upper-triangle hessian indices as arrays
         ij_pairs = sorted(hess_idx.keys())
-        h_idxs = jnp.array([hess_idx[p] for p in ij_pairs])
-        is_diag = jnp.array([1.0 if i == j else 0.0 for i, j in ij_pairs])
-
         out = jnp.zeros_like(c)
         out = out.at[0].set(f0)
         out = out.at[sl_g].set(f1 * c[sl_g])

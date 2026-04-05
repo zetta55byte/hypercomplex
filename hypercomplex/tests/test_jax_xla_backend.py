@@ -17,9 +17,9 @@ import pytest
 
 jax = pytest.importorskip("jax", reason="JAX not installed")
 jax.config.update("jax_enable_x64", True)
-import jax.numpy as jnp
+import jax.numpy as jnp  # noqa: E402
 
-from hypercomplex.backends.jax_xla import (
+from hypercomplex.backends.jax_xla import (  # noqa: E402
     JAXHyperArray,
     _layout,
     _mul_tensor,
