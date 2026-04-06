@@ -3,6 +3,7 @@
 [![PyPI](https://img.shields.io/pypi/v/hcderiv)](https://pypi.org/project/hcderiv/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19420834.svg)](https://doi.org/10.5281/zenodo.19420834)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19433812.svg)](https://doi.org/10.5281/zenodo.19433812)
 
 # hcderiv
 
