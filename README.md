@@ -170,6 +170,7 @@ layers: eigenvalue-based safety gates and delta commit filtering.
 | Project | Description |
 |---|---|
 | **hcderiv** | This library — exact one-pass gradients and Hessians |
+| [curvopt](https://github.com/zetta55byte/curvopt) | Curvature-aware trust-region optimizer powered by hcderiv |
 | [constitutional-os](https://github.com/zetta55byte/constitutional-os) | Formal governance runtime for AI systems |
 | [governed-research-lab-v2](https://github.com/zetta55byte/governed-research-lab-v2) | Multi-agent research system with curvature-aware governance via hcderiv |
 
