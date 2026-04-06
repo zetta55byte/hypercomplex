@@ -6,6 +6,9 @@ install:
 test:
 	pytest -q
 
+test-numpy:
+	pytest hypercomplex/tests/test_vectorized_core.py -q
+
 lint:
 	ruff check .
 	black --check .
