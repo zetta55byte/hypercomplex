@@ -3,9 +3,48 @@
 [![PyPI](https://img.shields.io/pypi/v/hcderiv)](https://pypi.org/project/hcderiv/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19420834.svg)](https://doi.org/10.5281/zenodo.19420834)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19433812.svg)](https://doi.org/10.5281/zenodo.19433812)
 
 # hcderiv
+
+## What's new in v0.4.0
+
+**JAX-XLA backend — 137–260× faster JAX Hessians.**
+
+Instead of wrapping Python `Hyper` objects in JAX arrays (v0.3, Python dispatch per operation), the XLA backend represents the entire coefficient vector as a single JAX array and implements the algebra via `jnp.einsum` — one call, XLA-fusable, `jax.jit`-traceable.
+
+```python
+H = hessian(f, x, backend="jax-xla")  # end-to-end compiled
+```
+
+**Benchmark** — `f(x) = Σ[sin(xᵢ) + 0.1xᵢ⁴]`, CPU, median 50 reps:
+
+| d | NumPy (ms) | JAX v0.3 (ms) | JAX-XLA v0.4 (ms) | XLA vs JAX |
+|---|---|---|---|---|
+| 3  | 1.25 | 83   | 0.36 | 232× |
+| 8  | 1.02 | 213  | 0.82 | 260× |
+| 16 | 2.45 | 439  | 2.41 | 182× |
+| 32 | 7.58 | 993  | 7.24 | 137× |
+| 64 | 30.7 | 3976 | 27.0 | 148× |
+
+XLA matches or beats NumPy at all tested dimensions.
+
+**Paper v4.0:** [doi:10.5281/zenodo.19475812](https://doi.org/10.5281/zenodo.19475812) · [PDF](paper/hcderiv_paper_v4.pdf)
+
+---
+
+## Why hypercomplex derivatives?
+
+Standard approaches have known failure modes:
+
+- **Finite differences** — step-size sensitivity cliff; up to 35% relative error at h=1e-8. Requires O(d²) function evaluations.
+- **Forward-mode AD** — exact, but needs d passes for the full Hessian. One pass gives one directional derivative.
+- **JAX `jax.hessian`** — requires the function in JAX primitives. For implicit layers, differentiates through iteration history — giving the **wrong Hessian**.
+
+Hypercomplex perturbation embeds all d(d+1)/2 second-order terms into a single forward evaluation. One pass, no step size, exact to machine precision.
+
+For **implicit layers** z\*=f(z\*,θ), this is the only single-pass method that recovers the IFT-correct Hessian. JAX unrolled AD gives a systematically different result — discrepancy O(1), not numerical noise. hcderiv is 27–403× faster than JAX unrolled for n=3–8.
+
+---
 
 **Exact gradients and Hessians in one forward pass — no finite differences, no graph tracing, no step-size tuning.**
 
@@ -87,7 +126,8 @@ Output is always plain NumPy regardless of backend.
 | Backend | Speed | Use when |
 |---|---|---|
 | `"numpy"` (default) | Fast — 0.35 ms at d=3, 28 ms at d=64 | Scientific computing, optimization loops, production |
-| `"jax"` | Slower (Python dispatch) | JAX pipelines, differentiable programming, composability |
+| `"jax"` | Slower (Python dispatch) | JAX pipelines, composability |
+| `"jax-xla"` | Fast (XLA compiled) | JAX + JIT pipelines, production |
 
 **Benchmark** (v0.3.0, d ∈ {3, 8, 16, 32, 64}, 50 reps, fixed seed):
 
@@ -99,8 +139,7 @@ Output is always plain NumPy regardless of backend.
 | 32 | 6.6   | 967 |
 | 64 | 28    | 3228 |
 
-NumPy is the recommended backend for performance. JAX exists for composability
-with JAX pipelines; a coefficient-level XLA backend is future work.
+NumPy is recommended for NumPy-only pipelines. For JAX pipelines, use `backend="jax-xla"` — XLA-compiled, matches NumPy speed, end-to-end `jax.jit`-traceable.
 
 ---
 
@@ -170,7 +209,6 @@ layers: eigenvalue-based safety gates and delta commit filtering.
 | Project | Description |
 |---|---|
 | **hcderiv** | This library — exact one-pass gradients and Hessians |
-| [curvopt](https://github.com/zetta55byte/curvopt) | Curvature-aware trust-region optimizer powered by hcderiv |
 | [constitutional-os](https://github.com/zetta55byte/constitutional-os) | Formal governance runtime for AI systems |
 | [governed-research-lab-v2](https://github.com/zetta55byte/governed-research-lab-v2) | Multi-agent research system with curvature-aware governance via hcderiv |
 
@@ -328,8 +366,8 @@ Built-in unary methods: `.exp()`, `.log()`, `.sin()`, `.cos()`, `.tanh()`,
 
 ## References
 
-1. Byte, Z. (2026). *One-Pass Exact Hessians via Hypercomplex Perturbation: A Vectorized Implementation with Implicit Layer Applications*. Zenodo.
-   DOI: [10.5281/zenodo.19394700](https://doi.org/10.5281/zenodo.19394700)
+1. Byte, Z. (2026). *One-Pass Exact Hessians via Hypercomplex Perturbation: A Vectorized Implementation with XLA Backend and Implicit Layer Applications*. Zenodo v4.0.
+   DOI: [10.5281/zenodo.19475812](https://doi.org/10.5281/zenodo.19475812) · [PDF](paper/hcderiv_paper_v4.pdf)
 
 2. Byte, Z. (2026). *Exact Ridge Curvature in One Evaluation*. Zenodo.
    DOI: [10.5281/zenodo.19356691](https://doi.org/10.5281/zenodo.19356691)
