@@ -364,6 +364,53 @@ Built-in unary methods: `.exp()`, `.log()`, `.sin()`, `.cos()`, `.tanh()`,
 | `curvature_map(f, xs, ys)` | Ridge curvature over 2D grid |
 | `shape_operator(f, x)` | Weingarten map of level set |
 
+## Design rationale: why hypercomplex for implicit layers?
+
+The standard approach to second-order optimization of implicit layers is to apply
+automatic differentiation to the unrolled fixed-point iteration. This is what
+`jax.hessian` does. The problem: it computes the Hessian of the T-step unrolled
+function, not the Hessian of the fixed-point equation. These are different quantities.
+
+The implicit function theorem (IFT) gives the correct answer:
+`dz*/dθ = -(I - ∂f/∂z)⁻¹ ∂f/∂θ` evaluated at convergence. This characterizes
+sensitivity at the fixed point itself, not along the path to it.
+
+Hypercomplex perturbation propagates through the fixed-point iteration in
+hypercomplex arithmetic. The iteration converges to the fixed point of the
+*augmented* system — which is exactly equivalent to applying IFT at the
+real-valued fixed point. The gradient error vs. analytic IFT is below 10⁻¹³
+at all tested sizes (see Table 3 in the paper).
+
+The practical consequence: any second-order optimizer using JAX unrolled AD on
+implicit layers is operating on an incorrect curvature estimate. The error is
+O(1) relative to the true Hessian — not numerical noise.
+
+---
+
+## Reproducibility
+
+```bash
+# Tests (all 117)
+pip install "hcderiv[jax]"
+pytest hypercomplex/tests/ -v
+
+# NumPy vs JAX benchmark
+python benchmarks/bench_hessian_backends.py
+
+# XLA benchmark (reproduces the 137–260× numbers)
+python benchmarks/bench_hessian_backends.py --backend jax-xla
+
+# Implicit layer demo (IFT correctness + JAX discrepancy)
+python benchmarks/implicit_layer_demo.py
+
+# Trust-region convergence demo
+python examples/trust_region.py
+```
+
+All benchmark results in the paper are reproducible with the above commands on any CPU. Seed is fixed (`seed=0`, 50 reps, 5 warmup).
+
+---
+
 ## References
 
 1. Byte, Z. (2026). *One-Pass Exact Hessians via Hypercomplex Perturbation: A Vectorized Implementation with XLA Backend and Implicit Layer Applications*. Zenodo v4.0.
